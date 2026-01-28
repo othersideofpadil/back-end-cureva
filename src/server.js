@@ -2,75 +2,68 @@ const app = require("./app");
 const config = require("./config");
 const { testConnection } = require("./config/database");
 
-const PORT = config.port;
+// Ambil port dari konfigurasi, default 3000
+const PORT = config.port || 3000;
 
-// Start server
+// Fungsi untuk memulai server
 const startServer = async () => {
   try {
-    // Test database connection
+    console.log("Memulai server...");
+
+    // Cek koneksi database sebelum start server
+    console.log("Menghubungkan ke database...");
     const dbConnected = await testConnection();
 
     if (!dbConnected) {
-      console.error(
-        "❌ Unable to connect to database. Please check your configuration."
-      );
+      console.error("Gagal terhubung ke database");
+      console.error("Periksa konfigurasi database di file .env");
       process.exit(1);
     }
 
-    // Start Express server
-    app.listen(PORT, () => {
-      console.log("");
-      console.log("╔═══════════════════════════════════════════════════════╗");
-      console.log("║                                                       ║");
-      console.log("║   🏥 CUREVA FISIOTERAPI API                          ║");
-      console.log("║                                                       ║");
-      console.log(
-        `║   🚀 Server running on port ${PORT}                      ║`
-      );
-      console.log(`║   🌍 Environment: ${config.nodeEnv.padEnd(33)}║`);
-      console.log("║                                                       ║");
-      console.log("╠═══════════════════════════════════════════════════════╣");
-      console.log("║                                                       ║");
-      console.log(
-        "║   📍 Local:    http://localhost:" + PORT + "                 ║"
-      );
-      console.log(
-        "║   📖 API:      http://localhost:" + PORT + "/api             ║"
-      );
-      console.log(
-        "║   💚 Health:   http://localhost:" + PORT + "/api/health      ║"
-      );
-      console.log("║                                                       ║");
-      console.log("╚═══════════════════════════════════════════════════════╝");
-      console.log("");
+    // Jalankan server Express
+    const server = app.listen(PORT, () => {
+      console.log(`Port: ${PORT}`);
+      console.log(`URL: http://localhost:${PORT}`);
+      console.log(`API: http://localhost:${PORT}/api`);
+    });
+
+    // Tangani error saat server start
+    server.on("error", (error) => {
+      if (error.code === "EADDRINUSE") {
+        console.error(`Port ${PORT} sudah digunakan`);
+      } else {
+        console.error("Error server:", error.message);
+      }
+      process.exit(1);
     });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
+    console.error("Gagal memulai server:", error.message);
     process.exit(1);
   }
 };
 
-// Handle uncaught exceptions
+/**
+ * Tangani error yang tidak tertangkap
+ */
 process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
+  console.error("Error tidak tertangkap:", error.message);
   process.exit(1);
 });
 
-// Handle unhandled promise rejections
+/**
+ * Tangani promise yang reject tanpa catch
+ */
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
-  process.exit(1);
+  console.error("Promise reject tidak ditangani:", reason);
 });
 
-// Graceful shutdown
-process.on("SIGTERM", () => {
-  console.log("👋 SIGTERM received. Shutting down gracefully...");
-  process.exit(0);
-});
-
+/**
+ * Tangani shutdown server (Ctrl+C)
+ */
 process.on("SIGINT", () => {
-  console.log("👋 SIGINT received. Shutting down gracefully...");
+  console.log("\nServer dihentikan");
   process.exit(0);
 });
 
+// Jalankan server
 startServer();

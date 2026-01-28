@@ -1,47 +1,35 @@
 const express = require("express");
 const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
 const config = require("./config");
 const routes = require("./routes");
-const { errorHandler, notFound, generalLimiter } = require("./middleware");
+const { errorHandler, notFound } = require("./middleware");
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
-
-// CORS configuration
+// CORS sederhana - izinkan semua di development
 app.use(
   cors({
-    origin: config.frontendUrl,
+    origin: config.nodeEnv === "development" ? true : config.frontendUrl,
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
-// Request parsing
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+// Parsing request
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Logging
+// Logging sederhana
 if (config.nodeEnv === "development") {
+  const morgan = require("morgan");
   app.use(morgan("dev"));
-} else {
-  app.use(morgan("combined"));
 }
 
-// Rate limiting
-app.use("/api", generalLimiter);
-
-// Health check (root)
+// Health check
 app.get("/", (req, res) => {
   res.json({
-    success: true,
-    message: "Welcome to Cureva Fisioterapi API",
-    version: "1.0.0",
-    documentation: "/api/health",
+    message: "API Cureva Homecare Fisioterapi",
+    status: "running",
+    environment: config.nodeEnv,
   });
 });
 

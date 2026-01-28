@@ -2,14 +2,18 @@ const { catchAsync, AppError } = require("../middleware");
 const PaymentService = require("../services/PaymentService");
 
 class PaymentController {
-  // Get payment by pemesanan ID (user)
+  // Endpoint untuk user biasa
+
+  // Ambil detail pembayaran berdasarkan ID pemesanan
   getByPemesanan = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const isAdmin = req.user.role === "admin";
+    const { id } = req.params; // ID pemesanan dari URL
+    const isAdmin = req.user.role === "admin"; // Cek role user
+
+    // User hanya bisa lihat pembayaran milik sendiri, admin bisa lihat semua
     const payment = await PaymentService.getPaymentByPemesanan(
-      id,
-      req.user.id,
-      isAdmin
+      id, // ID pemesanan
+      req.user.id, // ID user yang sedang login
+      isAdmin, // Flag apakah user adalah admin
     );
 
     res.json({
@@ -18,37 +22,41 @@ class PaymentController {
     });
   });
 
-  // Update payment method (user)
+  // Ubah metode pembayaran (misal: dari transfer ke tunai)
   updateMethod = catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const { metode } = req.body;
+    const { id } = req.params; // ID pembayaran
+    const { metode } = req.body; // Metode baru dari request body
 
+    // Validasi: metode wajib diisi
     if (!metode) {
       throw new AppError("Metode pembayaran diperlukan", 400);
     }
 
+    // Update metode pembayaran
     const payment = await PaymentService.updatePaymentMethod(
-      id,
-      metode,
-      req.user.id
+      id, // ID pembayaran
+      metode, // Metode baru
+      req.user.id, // Validasi: user hanya bisa update milik sendiri
     );
 
     res.json({
       success: true,
       message: "Metode pembayaran berhasil diubah",
-      data: payment,
+      data: payment, // Return data terbaru
     });
   });
 
-  // ============ ADMIN ENDPOINTS ============
+  // Endpoint untuk admin
 
-  // Get all payments (admin)
+  // Ambil semua data pembayaran (admin only)
   getAll = catchAsync(async (req, res) => {
+    // Filter dari query parameter
     const { status, metode, limit } = req.query;
+
     const payments = await PaymentService.getAllPayments({
-      status,
-      metode,
-      limit,
+      status, // Filter berdasarkan status: 'menunggu', 'dibayar', 'gagal'
+      metode, // Filter berdasarkan metode: 'transfer', 'tunai'
+      limit, // Batasan jumlah data
     });
 
     res.json({
@@ -57,20 +65,22 @@ class PaymentController {
     });
   });
 
-  // Update payment status (admin)
+  // Update status pembayaran (admin only)
   updateStatus = catchAsync(async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params; // ID pembayaran
     const { status, catatan } = req.body;
 
+    // Validasi: status wajib diisi
     if (!status) {
       throw new AppError("Status pembayaran diperlukan", 400);
     }
 
+    // Update status pembayaran
     const payment = await PaymentService.updatePaymentStatus(
-      id,
-      status,
-      catatan,
-      true
+      id, // ID pembayaran
+      status, // Status baru
+      catatan, // Catatan admin (opsional)
+      true, // Flag bahwa ini update oleh admin
     );
 
     res.json({
@@ -80,16 +90,17 @@ class PaymentController {
     });
   });
 
-  // Mark as paid (admin shortcut)
+  // Shortcut: Tandai pembayaran sebagai sudah dibayar (admin)
   markAsPaid = catchAsync(async (req, res) => {
     const { id } = req.params;
-    const { catatan } = req.body;
+    const { catatan } = req.body; // Catatan admin (opsional)
 
+    // Update langsung ke status 'dibayar'
     const payment = await PaymentService.updatePaymentStatus(
       id,
-      "dibayar",
+      "dibayar", // Status tetap
       catatan,
-      true
+      true,
     );
 
     res.json({
@@ -99,10 +110,16 @@ class PaymentController {
     });
   });
 
-  // Get payment statistics (admin)
+  // Ambil statistik pembayaran (admin)
   getStatistik = catchAsync(async (req, res) => {
+    // Filter berdasarkan rentang tanggal (opsional)
     const { tanggalFrom, tanggalTo } = req.query;
-    const stats = await PaymentService.getStatistik({ tanggalFrom, tanggalTo });
+
+    // Ambil statistik: total pendapatan, jumlah transaksi, dll
+    const stats = await PaymentService.getStatistik({
+      tanggalFrom,
+      tanggalTo,
+    });
 
     res.json({
       success: true,

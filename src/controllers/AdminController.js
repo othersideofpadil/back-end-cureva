@@ -9,14 +9,15 @@ const Pembayaran = require("../models/Pembayaran");
 const Layanan = require("../models/Layanan");
 
 class AdminController {
-  // Get dashboard statistics
+  // Dashboard statistics
   getDashboard = catchAsync(async (req, res) => {
+    // Hitung tanggal untuk statistik bulan ini
     const today = new Date().toISOString().split("T")[0];
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    const monthStart = thisMonth.toISOString().split("T")[0];
+    const monthStart = new Date();
+    monthStart.setDate(1); // Set ke tanggal 1 bulan ini
+    const monthStartStr = monthStart.toISOString().split("T")[0];
 
-    // Get various statistics
+    // Ambil semua data secara paralel untuk performa lebih baik
     const [
       bookingStatsMonth,
       bookingStatsAll,
@@ -27,16 +28,10 @@ class AdminController {
       todayBookings,
       totalLayanan,
     ] = await Promise.all([
-      BookingService.getStatistik({
-        tanggalFrom: monthStart,
-        tanggalTo: today,
-      }),
-      BookingService.getStatistik({}), // All time stats
-      PaymentService.getStatistik({
-        tanggalFrom: monthStart,
-        tanggalTo: today,
-      }),
-      PaymentService.getStatistik({}), // All time payment stats
+      BookingService.getStatistik({ tanggalFrom: monthStartStr, tanggalTo: today }),
+      BookingService.getStatistik({}),
+      PaymentService.getStatistik({ tanggalFrom: monthStartStr, tanggalTo: today }),
+      PaymentService.getStatistik({}),
       BookingService.getUpcoming(),
       BookingService.getAllBookings({ limit: 10 }),
       Pemesanan.countByTanggal(today),
@@ -49,7 +44,7 @@ class AdminController {
       success: true,
       data: {
         overview: {
-          total_users: totalUsers,
+          total_users: totalUsers || 0,
           total_pemesanan: bookingStatsAll.total_pemesanan || 0,
           selesai: bookingStatsAll.selesai || 0,
           menunggu: bookingStatsAll.menunggu || 0,
@@ -63,16 +58,27 @@ class AdminController {
           ...bookingStatsMonth,
           ...paymentStatsMonth,
         },
-        upcoming_bookings: upcomingBookings,
-        recent_bookings: recentBookings,
+        upcoming_bookings: upcomingBookings || [],
+        recent_bookings: recentBookings || [],
       },
     });
   });
 
-  // Get all users (admin)
+  // Get all users with pagination
   getUsers = catchAsync(async (req, res) => {
-    const { role, search, limit, offset } = req.query;
-    const users = await User.findAll({ role, search, limit, offset });
+    const { role, search, limit = 10, offset = 0 } = req.query;
+
+    // Validasi limit untuk mencegah overload
+    const parsedLimit = Math.min(parseInt(limit), 100);
+    const parsedOffset = Math.max(0, parseInt(offset));
+
+    const users = await User.findAll({
+      role,
+      search,
+      limit: parsedLimit,
+      offset: parsedOffset,
+    });
+
     const total = await User.count({ role });
 
     res.json({
@@ -80,20 +86,27 @@ class AdminController {
       data: {
         users,
         total,
+        limit: parsedLimit,
+        offset: parsedOffset,
+        has_more: parsedOffset + users.length < total, // Untuk pagination UI
       },
     });
   });
 
-  // Get user by ID (admin)
+  // Get single user by ID
   getUserById = catchAsync(async (req, res) => {
     const { id } = req.params;
-    const user = await User.findById(id);
 
+    if (!id) {
+      throw new AppError("ID user diperlukan", 400);
+    }
+
+    const user = await User.findById(id);
     if (!user) {
       throw new AppError("User tidak ditemukan", 404);
     }
 
-    // Remove sensitive data
+    // Hapus data sensitif sebelum dikembalikan
     delete user.password;
     delete user.google_token;
     delete user.verification_token;
@@ -105,26 +118,33 @@ class AdminController {
     });
   });
 
-  // Update user (admin)
+  // Update user data
   updateUser = catchAsync(async (req, res) => {
     const { id } = req.params;
     const { nama, telepon, role, alamat } = req.body;
 
+    // Cek apakah user ada
     const user = await User.findById(id);
     if (!user) {
       throw new AppError("User tidak ditemukan", 404);
     }
 
-    // Prevent changing own role
+    // Validasi: tidak bisa ubah role sendiri
     if (req.user.id === parseInt(id) && role && role !== req.user.role) {
-      throw new AppError("Tidak dapat mengubah role sendiri", 400);
+      throw new AppError("Tidak dapat mengubah role akun sendiri", 400);
     }
 
+    // Siapkan data untuk update
     const updateData = {};
     if (nama !== undefined) updateData.nama = nama;
     if (telepon !== undefined) updateData.telepon = telepon;
     if (role !== undefined) updateData.role = role;
     if (alamat !== undefined) updateData.alamat = alamat;
+
+    // Cek apakah ada data yang diupdate
+    if (Object.keys(updateData).length === 0) {
+      throw new AppError("Tidak ada data yang diperbarui", 400);
+    }
 
     await User.update(id, updateData);
 
@@ -134,7 +154,7 @@ class AdminController {
     });
   });
 
-  // Delete user (admin)
+  // Delete user
   deleteUser = catchAsync(async (req, res) => {
     const { id } = req.params;
 
@@ -143,12 +163,12 @@ class AdminController {
       throw new AppError("User tidak ditemukan", 404);
     }
 
-    // Prevent deleting self
+    // Validasi: tidak bisa hapus akun sendiri
     if (req.user.id === parseInt(id)) {
       throw new AppError("Tidak dapat menghapus akun sendiri", 400);
     }
 
-    // Prevent deleting admin by non-super admin (optional check)
+    // Validasi: tidak bisa hapus admin
     if (user.role === "admin") {
       throw new AppError("Tidak dapat menghapus akun admin", 400);
     }
@@ -178,7 +198,7 @@ class AdminController {
     });
   });
 
-  // Update settings
+  // Update multiple settings
   updateSettings = catchAsync(async (req, res) => {
     const updates = req.body;
 
@@ -205,7 +225,6 @@ class AdminController {
     }
 
     const success = await Settings.update(key, value);
-
     if (!success) {
       throw new AppError("Setting tidak ditemukan", 404);
     }
@@ -218,20 +237,25 @@ class AdminController {
 
   // Get activity logs
   getActivityLogs = catchAsync(async (req, res) => {
-    const { user_id, activity_type, dateFrom, dateTo, limit, offset } =
-      req.query;
+    const { user_id, activity_type, dateFrom, dateTo, limit = 50, offset = 0 } = req.query;
+
+    // Validasi limit
+    const parsedLimit = Math.min(parseInt(limit), 100);
+    const parsedOffset = Math.max(0, parseInt(offset));
+
     const logs = await ActivityLog.findAll({
       user_id,
       activity_type,
       dateFrom,
       dateTo,
-      limit,
-      offset,
+      limit: parsedLimit,
+      offset: parsedOffset,
     });
 
     res.json({
       success: true,
       data: logs,
+      total: logs.length,
     });
   });
 

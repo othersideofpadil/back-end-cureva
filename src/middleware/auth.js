@@ -2,11 +2,16 @@ const jwt = require("jsonwebtoken");
 const config = require("../config");
 const User = require("../models/User");
 
-// Verify JWT token
+/**
+ * Middleware untuk verifikasi JWT token
+ * Wajib untuk endpoint yang membutuhkan autentikasi
+ */
 const authenticate = async (req, res, next) => {
   try {
+    // Ambil token dari header Authorization
     const authHeader = req.headers.authorization;
 
+    // Validasi format header: "Bearer <token>"
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
@@ -14,10 +19,13 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Pisahkan "Bearer" dari tokennya
     const token = authHeader.split(" ")[1];
 
+    // Verifikasi token dengan secret key
     const decoded = jwt.verify(token, config.jwt.secret);
 
+    // Cek apakah user masih ada di database
     const user = await User.findById(decoded.id);
 
     if (!user) {
@@ -27,7 +35,8 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
+    // Attach data user ke request object
+    // Data ini akan tersedia di controller
     req.user = {
       id: user.id,
       nama: user.nama,
@@ -36,8 +45,9 @@ const authenticate = async (req, res, next) => {
       is_verified: user.is_verified,
     };
 
-    next();
+    next(); // Lanjut ke middleware/controller berikutnya
   } catch (error) {
+    // Handle berbagai jenis error JWT
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
@@ -52,6 +62,7 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    // Error lainnya (database error, dll)
     console.error("Auth middleware error:", error);
     return res.status(500).json({
       success: false,
@@ -60,11 +71,16 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-// Optional authentication (doesn't fail if no token)
+/**
+ * Autentikasi opsional (tidak mandatory)
+ * Jika ada token valid, attach user data
+ * Jika tidak ada token, tetap lanjut tanpa error
+ */
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 
+    // Jika tidak ada token, langsung next
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return next();
     }
@@ -73,6 +89,7 @@ const optionalAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, config.jwt.secret);
     const user = await User.findById(decoded.id);
 
+    // Jika user ditemukan, attach data ke request
     if (user) {
       req.user = {
         id: user.id,
@@ -85,13 +102,17 @@ const optionalAuth = async (req, res, next) => {
 
     next();
   } catch {
-    // Token invalid, but continue without user
+    // Jika token invalid, ignore dan lanjut tanpa user data
     next();
   }
 };
 
-// Check if user is admin
+/**
+ * Middleware untuk cek apakah user adalah admin
+ * Harus dipanggil SETELAH authenticate middleware
+ */
 const isAdmin = (req, res, next) => {
+  // Pastikan user sudah login
   if (!req.user) {
     return res.status(401).json({
       success: false,
@@ -99,6 +120,7 @@ const isAdmin = (req, res, next) => {
     });
   }
 
+  // Cek role user
   if (req.user.role !== "admin") {
     return res.status(403).json({
       success: false,
@@ -109,7 +131,10 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-// Check if user is verified
+/**
+ * Middleware untuk cek apakah user sudah verifikasi email
+ * Harus dipanggil SETELAH authenticate middleware
+ */
 const isVerified = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
@@ -118,6 +143,7 @@ const isVerified = (req, res, next) => {
     });
   }
 
+  // Cek status verifikasi email
   if (!req.user.is_verified) {
     return res.status(403).json({
       success: false,
@@ -128,27 +154,39 @@ const isVerified = (req, res, next) => {
   next();
 };
 
-// Generate tokens
+/**
+ * Fungsi untuk generate access token dan refresh token
+ * @param {Object} user - Data user
+ * @returns {Object} - Object berisi accessToken dan refreshToken
+ */
 const generateTokens = (user) => {
+  // Access token: untuk autentikasi API request
   const accessToken = jwt.sign(
     { id: user.id, email: user.email, role: user.role },
     config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn }
+    { expiresIn: config.jwt.expiresIn }, // Contoh: "15m"
   );
 
-  const refreshToken = jwt.sign({ id: user.id }, config.jwt.refreshSecret, {
-    expiresIn: config.jwt.refreshExpiresIn,
-  });
+  // Refresh token: untuk mendapatkan access token baru
+  const refreshToken = jwt.sign(
+    { id: user.id },
+    config.jwt.refreshSecret,
+    { expiresIn: config.jwt.refreshExpiresIn }, // Contoh: "7d"
+  );
 
   return { accessToken, refreshToken };
 };
 
-// Verify refresh token
+/**
+ * Fungsi untuk verifikasi refresh token
+ * @param {string} token - Refresh token
+ * @returns {Object|null} - Decoded payload atau null jika invalid
+ */
 const verifyRefreshToken = (token) => {
   try {
     return jwt.verify(token, config.jwt.refreshSecret);
   } catch {
-    return null;
+    return null; // Token invalid atau expired
   }
 };
 
