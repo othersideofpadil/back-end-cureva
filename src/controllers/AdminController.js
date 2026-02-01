@@ -1,7 +1,6 @@
 const { catchAsync, AppError } = require("../middleware");
 const User = require("../models/User");
 const Settings = require("../models/Settings");
-const ActivityLog = require("../models/ActivityLog");
 const BookingService = require("../services/BookingService");
 const PaymentService = require("../services/PaymentService");
 const Pemesanan = require("../models/Pemesanan");
@@ -28,9 +27,15 @@ class AdminController {
       todayBookings,
       totalLayanan,
     ] = await Promise.all([
-      BookingService.getStatistik({ tanggalFrom: monthStartStr, tanggalTo: today }),
+      BookingService.getStatistik({
+        tanggalFrom: monthStartStr,
+        tanggalTo: today,
+      }),
       BookingService.getStatistik({}),
-      PaymentService.getStatistik({ tanggalFrom: monthStartStr, tanggalTo: today }),
+      PaymentService.getStatistik({
+        tanggalFrom: monthStartStr,
+        tanggalTo: today,
+      }),
       PaymentService.getStatistik({}),
       BookingService.getUpcoming(),
       BookingService.getAllBookings({ limit: 10 }),
@@ -232,30 +237,6 @@ class AdminController {
     res.json({
       success: true,
       message: "Setting berhasil diperbarui",
-    });
-  });
-
-  // Get activity logs
-  getActivityLogs = catchAsync(async (req, res) => {
-    const { user_id, activity_type, dateFrom, dateTo, limit = 50, offset = 0 } = req.query;
-
-    // Validasi limit
-    const parsedLimit = Math.min(parseInt(limit), 100);
-    const parsedOffset = Math.max(0, parseInt(offset));
-
-    const logs = await ActivityLog.findAll({
-      user_id,
-      activity_type,
-      dateFrom,
-      dateTo,
-      limit: parsedLimit,
-      offset: parsedOffset,
-    });
-
-    res.json({
-      success: true,
-      data: logs,
-      total: logs.length,
     });
   });
 

@@ -1,6 +1,5 @@
 const nodemailer = require("nodemailer");
 const config = require("../config");
-const LogEmail = require("../models/LogEmail");
 
 class EmailService {
   constructor() {
@@ -15,28 +14,8 @@ class EmailService {
     });
   }
 
-  async sendMail(
-    to,
-    subject,
-    html,
-    contentType = "pemesanan_baru",
-    idPemesanan = null
-  ) {
-    let logId = null;
-
+  async sendMail(to, subject, html) {
     try {
-      // Log email attempt
-      if (idPemesanan) {
-        const log = await LogEmail.create({
-          id_pemesanan: idPemesanan,
-          recipient_email: to,
-          subject,
-          content_type: contentType,
-          status: "pending",
-        });
-        logId = log.id;
-      }
-
       // Send email
       await this.transporter.sendMail({
         from: config.email.from,
@@ -45,19 +24,9 @@ class EmailService {
         html,
       });
 
-      // Update log status
-      if (logId) {
-        await LogEmail.updateStatus(logId, "terkirim");
-      }
-
       return { success: true };
     } catch (error) {
       console.error("Email sending failed:", error);
-
-      if (logId) {
-        await LogEmail.updateStatus(logId, "gagal", error.message);
-      }
-
       return { success: false, error: error.message };
     }
   }
@@ -95,15 +64,15 @@ class EmailService {
               <p style="margin: 0; color: #6b7280;">Durasi: ${
                 layanan.durasi
               } menit | Harga: Rp ${Number(layanan.harga).toLocaleString(
-      "id-ID"
-    )}</p>
+                "id-ID",
+              )}</p>
             </div>
 
             <h3>📅 Detail Jadwal</h3>
             <div class="info-row">
               <span class="info-label">Tanggal</span>
               <span class="info-value">${new Date(
-                booking.tanggal
+                booking.tanggal,
               ).toLocaleDateString("id-ID", {
                 weekday: "long",
                 year: "numeric",
@@ -189,7 +158,7 @@ class EmailService {
       subject,
       html,
       "pemesanan_baru",
-      booking.id
+      booking.id,
     );
   }
 
@@ -250,7 +219,7 @@ class EmailService {
 
             <h3>Detail Pemesanan</h3>
             <p><strong>Tanggal:</strong> ${new Date(
-              booking.tanggal
+              booking.tanggal,
             ).toLocaleDateString("id-ID", {
               weekday: "long",
               year: "numeric",
@@ -287,7 +256,7 @@ class EmailService {
       info.subject,
       html,
       status === "dikonfirmasi" ? "konfirmasi" : "penolakan",
-      booking.id
+      booking.id,
     );
   }
 

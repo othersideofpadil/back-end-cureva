@@ -4,9 +4,7 @@ const Pemesanan = require("./Pemesanan");
 const Pembayaran = require("./Pembayaran");
 const { JadwalDefault, JadwalAktif } = require("./Jadwal");
 const Notifikasi = require("./Notifikasi");
-const LogEmail = require("./LogEmail");
 const Settings = require("./Settings");
-const ActivityLog = require("./ActivityLog");
 
 module.exports = {
   User,
@@ -16,7 +14,5 @@ module.exports = {
   JadwalDefault,
   JadwalAktif,
   Notifikasi,
-  LogEmail,
   Settings,
-  ActivityLog,
 };

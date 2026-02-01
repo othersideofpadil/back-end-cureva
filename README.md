@@ -1,6 +1,6 @@
 # Cureva Fisioterapi Backend API
 
-Backend API untuk sistem pemesanan layanan homecare fisioterapi  Cureva.
+Backend API untuk sistem pemesanan layanan homecare fisioterapi Cureva.
 
 ## 🚀 Tech Stack
 
@@ -34,10 +34,8 @@ cureva-backend/
 │   │   ├── rateLimiter.js
 │   │   └── validate.js
 │   ├── models/           # Database models
-│   │   ├── ActivityLog.js
 │   │   ├── Jadwal.js
 │   │   ├── Layanan.js
-│   │   ├── LogEmail.js
 │   │   ├── Notifikasi.js
 │   │   ├── Pembayaran.js
 │   │   ├── Pemesanan.js
@@ -227,7 +225,6 @@ Base URL: `/api`
 | GET    | `/settings/categories` | Admin | Kategori settings        |
 | PUT    | `/settings`            | Admin | Update multiple settings |
 | PUT    | `/settings/:key`       | Admin | Update single setting    |
-| GET    | `/activity-logs`       | Admin | Activity logs            |
 
 ## 🔐 Authentication
 

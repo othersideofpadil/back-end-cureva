@@ -24,7 +24,4 @@ router.get("/settings/categories", AdminController.getSettingCategories);
 router.put("/settings", AdminController.updateSettings);
 router.put("/settings/:key", AdminController.updateSetting);
 
-// Activity logs
-router.get("/activity-logs", AdminController.getActivityLogs);
-
 module.exports = router;
