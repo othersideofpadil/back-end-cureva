@@ -1,6 +1,8 @@
 const { pool } = require("../config/database");
 
+// Model untuk tabel pembayaran - menangani operasi database payment
 class Pembayaran {
+  // Buat record pembayaran baru (auto-created saat booking)
   static async create(data) {
     const {
       id_pemesanan,
@@ -13,31 +15,34 @@ class Pembayaran {
     const [result] = await pool.execute(
       `INSERT INTO pembayaran (id_pemesanan, metode, status, jumlah, catatan)
        VALUES (?, ?, ?, ?, ?)`,
-      [id_pemesanan, metode, status, jumlah, catatan]
+      [id_pemesanan, metode, status, jumlah, catatan],
     );
 
     return { id: result.insertId, ...data };
   }
 
+  // Cari pembayaran berdasarkan ID
   static async findById(id) {
     const [rows] = await pool.execute(
       `SELECT pb.*, p.kode_booking, p.tanggal, p.waktu
        FROM pembayaran pb
        JOIN pemesanan p ON pb.id_pemesanan = p.id
        WHERE pb.id = ?`,
-      [id]
+      [id],
     );
     return rows[0] || null;
   }
 
+  // Cari pembayaran berdasarkan ID pemesanan
   static async findByPemesanan(idPemesanan) {
     const [rows] = await pool.execute(
       "SELECT * FROM pembayaran WHERE id_pemesanan = ?",
-      [idPemesanan]
+      [idPemesanan],
     );
     return rows[0] || null;
   }
 
+  // Update data pembayaran
   static async update(id, data) {
     const fields = [];
     const values = [];
@@ -54,23 +59,29 @@ class Pembayaran {
     values.push(id);
     const [result] = await pool.execute(
       `UPDATE pembayaran SET ${fields.join(", ")} WHERE id = ?`,
-      values
+      values,
     );
 
     return result.affectedRows > 0;
   }
 
+  // Update status pembayaran dengan timestamp (admin only)
   static async updateStatus(id, status, catatan = null) {
     const data = { status };
+
+    // Catat tanggal pembayaran jika status dibayar
     if (status === "dibayar") {
       data.tanggal_pembayaran = new Date();
     }
+
     if (catatan) {
       data.catatan = catatan;
     }
+
     return this.update(id, data);
   }
 
+  // Update pembayaran berdasarkan ID pemesanan
   static async updateByPemesanan(idPemesanan, data) {
     const fields = [];
     const values = [];
@@ -87,12 +98,13 @@ class Pembayaran {
     values.push(idPemesanan);
     const [result] = await pool.execute(
       `UPDATE pembayaran SET ${fields.join(", ")} WHERE id_pemesanan = ?`,
-      values
+      values,
     );
 
     return result.affectedRows > 0;
   }
 
+  // Ambil semua pembayaran dengan filter (admin only)
   static async findAll(filters = {}) {
     let query = `
       SELECT pb.*, 
@@ -128,6 +140,7 @@ class Pembayaran {
     return rows;
   }
 
+  // Ambil statistik pembayaran (total, dibayar, pending, dll)
   static async getStatistik(filters = {}) {
     let dateCondition = "";
     const values = [];
@@ -149,19 +162,21 @@ class Pembayaran {
       JOIN pemesanan p ON pb.id_pemesanan = p.id
       ${dateCondition}
     `,
-      values
+      values,
     );
 
     return stats[0];
   }
 
+  // Hapus pembayaran berdasarkan ID pemesanan
   static async deleteByPemesanan(idPemesanan) {
     const [result] = await pool.execute(
       "DELETE FROM pembayaran WHERE id_pemesanan = ?",
-      [idPemesanan]
+      [idPemesanan],
     );
     return result.affectedRows > 0;
   }
 }
 
+// Export model Pembayaran
 module.exports = Pembayaran;

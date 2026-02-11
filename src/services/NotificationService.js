@@ -1,26 +1,33 @@
 const Notifikasi = require("../models/Notifikasi");
 
+// Service untuk menangani logic business notifikasi
 class NotificationService {
+  // Buat notifikasi baru
   async createNotification(data) {
     return Notifikasi.create(data);
   }
 
+  // Ambil semua notifikasi milik user dengan filter
   async getNotifications(userId, filters = {}) {
     return Notifikasi.findByUser(userId, filters);
   }
 
+  // Hitung jumlah notifikasi yang belum dibaca
   async getUnreadCount(userId) {
     return Notifikasi.countUnread(userId);
   }
 
+  // Tandai notifikasi sebagai sudah dibaca
   async markAsRead(id, userId) {
+    // Cari notifikasi di database
     const notif = await Notifikasi.findById(id);
 
+    // Validasi: Cek apakah notifikasi exist
     if (!notif) {
       throw { statusCode: 404, message: "Notifikasi tidak ditemukan" };
     }
 
-    // Use loose comparison to handle number vs string type mismatch
+    // Cek kepemilikan notifikasi (hanya pemilik yang bisa mark as read)
     if (notif.id_user != userId) {
       throw {
         statusCode: 403,
@@ -28,23 +35,29 @@ class NotificationService {
       };
     }
 
+    // Update status menjadi sudah dibaca
     await Notifikasi.markAsRead(id);
     return { success: true };
   }
 
+  // Tandai semua notifikasi user sebagai sudah dibaca
   async markAllAsRead(userId) {
+    // Update semua notifikasi user menjadi sudah dibaca
     const count = await Notifikasi.markAllAsRead(userId);
     return { count, success: true };
   }
 
+  // Hapus notifikasi tertentu
   async deleteNotification(id, userId) {
+    // Cari notifikasi di database
     const notif = await Notifikasi.findById(id);
 
+    // Validasi: Cek apakah notifikasi exist
     if (!notif) {
       throw { statusCode: 404, message: "Notifikasi tidak ditemukan" };
     }
 
-    // Use loose comparison to handle number vs string type mismatch
+    // Cek kepemilikan notifikasi (hanya pemilik yang bisa hapus)
     if (notif.id_user != userId) {
       throw {
         statusCode: 403,
@@ -52,15 +65,17 @@ class NotificationService {
       };
     }
 
+    // Hapus notifikasi dari database
     await Notifikasi.delete(id);
     return { success: true };
   }
 
+  // Cleanup: Hapus notifikasi lama (auto-cleanup)
   async cleanupOld(days = 30) {
     return Notifikasi.deleteOld(days);
   }
 
-  // Create specific notification types
+  // Helper: Buat notifikasi saat booking dibuat
   async notifyBookingCreated(userId, pemesanan) {
     return this.createNotification({
       id_user: userId,
@@ -72,6 +87,7 @@ class NotificationService {
     });
   }
 
+  // Helper: Buat notifikasi saat booking dikonfirmasi
   async notifyBookingConfirmed(userId, pemesanan) {
     return this.createNotification({
       id_user: userId,
@@ -83,6 +99,7 @@ class NotificationService {
     });
   }
 
+  // Helper: Buat notifikasi saat booking ditolak
   async notifyBookingRejected(userId, pemesanan, reason) {
     return this.createNotification({
       id_user: userId,
@@ -94,6 +111,7 @@ class NotificationService {
     });
   }
 
+  // Helper: Buat notifikasi saat pembayaran diterima
   async notifyPaymentReceived(userId, pemesanan) {
     return this.createNotification({
       id_user: userId,
@@ -105,6 +123,7 @@ class NotificationService {
     });
   }
 
+  // Helper: Buat notifikasi reminder sesi besok
   async notifyUpcomingSession(userId, pemesanan) {
     return this.createNotification({
       id_user: userId,
@@ -116,6 +135,7 @@ class NotificationService {
     });
   }
 
+  // Helper: Buat notifikasi request rating
   async notifyRatingRequest(userId, pemesanan) {
     return this.createNotification({
       id_user: userId,
@@ -128,4 +148,5 @@ class NotificationService {
   }
 }
 
+// Export instance dari NotificationService
 module.exports = new NotificationService();

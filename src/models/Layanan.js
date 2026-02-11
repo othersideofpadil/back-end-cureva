@@ -1,6 +1,8 @@
 const { pool } = require("../config/database");
 
+// Model untuk tabel layanan - menangani operasi database layanan fisioterapi
 class Layanan {
+  // Cari layanan berdasarkan ID
   static async findById(id) {
     const [rows] = await pool.execute("SELECT * FROM layanan WHERE id = ?", [
       id,
@@ -8,6 +10,7 @@ class Layanan {
     return rows[0] || null;
   }
 
+  // Ambil semua layanan dengan filter (kategori, search, is_active)
   static async findAll(filters = {}) {
     let query = "SELECT * FROM layanan";
     const conditions = [];
@@ -38,20 +41,23 @@ class Layanan {
     return rows;
   }
 
+  // Ambil hanya layanan yang aktif (ditampilkan ke user)
   static async findActive() {
     const [rows] = await pool.execute(
-      "SELECT * FROM layanan WHERE is_active = 1 ORDER BY kategori, nama"
+      "SELECT * FROM layanan WHERE is_active = 1 ORDER BY kategori, nama",
     );
     return rows;
   }
 
+  // Ambil daftar kategori layanan yang unik
   static async getKategori() {
     const [rows] = await pool.execute(
-      "SELECT DISTINCT kategori FROM layanan WHERE is_active = 1 ORDER BY kategori"
+      "SELECT DISTINCT kategori FROM layanan WHERE is_active = 1 ORDER BY kategori",
     );
     return rows.map((row) => row.kategori);
   }
 
+  // Buat layanan baru (admin only)
   static async create(data) {
     const {
       nama,
@@ -66,12 +72,13 @@ class Layanan {
     const [result] = await pool.execute(
       `INSERT INTO layanan (nama, deskripsi, harga, durasi, kategori, gambar_url, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [nama, deskripsi, harga, durasi, kategori, gambar_url, is_active]
+      [nama, deskripsi, harga, durasi, kategori, gambar_url, is_active],
     );
 
     return { id: result.insertId, ...data };
   }
 
+  // Update data layanan (admin only)
   static async update(id, data) {
     const fields = [];
     const values = [];
@@ -88,12 +95,13 @@ class Layanan {
     values.push(id);
     const [result] = await pool.execute(
       `UPDATE layanan SET ${fields.join(", ")} WHERE id = ?`,
-      values
+      values,
     );
 
     return result.affectedRows > 0;
   }
 
+  // Hapus layanan (admin only)
   static async delete(id) {
     const [result] = await pool.execute("DELETE FROM layanan WHERE id = ?", [
       id,
@@ -101,14 +109,16 @@ class Layanan {
     return result.affectedRows > 0;
   }
 
+  // Toggle status aktif/non-aktif layanan
   static async toggleActive(id) {
     const [result] = await pool.execute(
       "UPDATE layanan SET is_active = NOT is_active WHERE id = ?",
-      [id]
+      [id],
     );
     return result.affectedRows > 0;
   }
 
+  // Hitung jumlah layanan dengan filter
   static async count(filters = {}) {
     let query = "SELECT COUNT(*) as total FROM layanan";
     const conditions = [];
@@ -128,4 +138,5 @@ class Layanan {
   }
 }
 
+// Export model Layanan
 module.exports = Layanan;

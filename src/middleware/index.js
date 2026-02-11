@@ -7,12 +7,7 @@ const {
   verifyRefreshToken,
 } = require("./auth");
 const { validate } = require("./validate");
-const {
-  AppError,
-  errorHandler,
-  notFound,
-  catchAsync,
-} = require("./errorHandler");
+const { errorHandler, notFound } = require("./errorHandler");
 const {
   generalLimiter,
   authLimiter,
@@ -27,10 +22,8 @@ module.exports = {
   generateTokens,
   verifyRefreshToken,
   validate,
-  AppError,
   errorHandler,
   notFound,
-  catchAsync,
   generalLimiter,
   authLimiter,
   bookingLimiter,

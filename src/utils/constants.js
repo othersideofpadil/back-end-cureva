@@ -1,4 +1,6 @@
-// Status constants
+// File constants - menyimpan semua konstanta/nilai tetap aplikasi
+
+// Daftar status pemesanan/booking
 const BOOKING_STATUS = {
   MENUNGGU_KONFIRMASI: "menunggu_konfirmasi",
   DIKONFIRMASI: "dikonfirmasi",
@@ -11,17 +13,20 @@ const BOOKING_STATUS = {
   DIBATALKAN_SISTEM: "dibatalkan_sistem",
 };
 
+// Daftar status pembayaran
 const PAYMENT_STATUS = {
   MENUNGGU: "menunggu",
   DIBAYAR: "dibayar",
   GAGAL: "gagal",
 };
 
+// Daftar metode pembayaran
 const PAYMENT_METHOD = {
   CASH_ON_VISIT: "cash_on_visit",
   TRANSFER_ON_VISIT: "transfer_on_visit",
 };
 
+// Daftar status slot jadwal
 const SLOT_STATUS = {
   TERSEDIA: "tersedia",
   DIPESAN: "dipesan",
@@ -29,11 +34,13 @@ const SLOT_STATUS = {
   LIBUR: "libur",
 };
 
+// Daftar role user
 const USER_ROLE = {
   PASIEN: "pasien",
   ADMIN: "admin",
 };
 
+// Daftar tipe notifikasi
 const NOTIFICATION_TYPE = {
   PEMESANAN: "pemesanan",
   PEMBAYARAN: "pembayaran",
@@ -43,6 +50,7 @@ const NOTIFICATION_TYPE = {
   PROMO: "promo",
 };
 
+// Daftar tipe email
 const EMAIL_TYPE = {
   PEMESANAN_BARU: "pemesanan_baru",
   KONFIRMASI: "konfirmasi",
@@ -51,6 +59,7 @@ const EMAIL_TYPE = {
   LAPORAN: "laporan",
 };
 
+// Daftar hari dalam seminggu
 const HARI = {
   SENIN: "senin",
   SELASA: "selasa",
@@ -61,7 +70,7 @@ const HARI = {
   MINGGU: "minggu",
 };
 
-// Status labels (Indonesian)
+// Label status dalam bahasa Indonesia (untuk ditampilkan ke user)
 const STATUS_LABELS = {
   [BOOKING_STATUS.MENUNGGU_KONFIRMASI]: "Menunggu Konfirmasi",
   [BOOKING_STATUS.DIKONFIRMASI]: "Dikonfirmasi",
@@ -85,7 +94,7 @@ const PAYMENT_METHOD_LABELS = {
   [PAYMENT_METHOD.TRANSFER_ON_VISIT]: "Transfer Saat Kunjungan",
 };
 
-// Valid status transitions
+// Mapping perpindahan status yang valid (status flow)
 const VALID_STATUS_TRANSITIONS = {
   [BOOKING_STATUS.MENUNGGU_KONFIRMASI]: [
     BOOKING_STATUS.DIKONFIRMASI,
@@ -114,6 +123,7 @@ const VALID_STATUS_TRANSITIONS = {
   [BOOKING_STATUS.DIBATALKAN_SISTEM]: [],
 };
 
+// Export semua constants
 module.exports = {
   BOOKING_STATUS,
   PAYMENT_STATUS,

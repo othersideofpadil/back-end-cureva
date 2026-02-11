@@ -1,11 +1,11 @@
 const { body, param, query } = require("express-validator");
 
-// Common validators
+// Kumpulan validator untuk validasi input request
 const validators = {
-  // ID validators
+  // Validator ID (harus integer positif)
   id: param("id").isInt({ min: 1 }).withMessage("ID tidak valid"),
 
-  // Date validators
+  // Validator tanggal (format YYYY-MM-DD)
   date: (field) =>
     body(field)
       .isDate()
@@ -14,30 +14,31 @@ const validators = {
   dateQuery: (field) =>
     query(field).optional().isDate().withMessage(`Format ${field} tidak valid`),
 
-  // Time validator
+  // Validator waktu (format HH:MM)
   time: (field) =>
     body(field)
       .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
       .withMessage(`Format ${field} tidak valid (HH:MM)`),
 
-  // Email validator
+  // Validator email (format email valid)
   email: body("email")
     .isEmail()
     .normalizeEmail()
     .withMessage("Format email tidak valid"),
 
-  // Phone validator
+  // Validator nomor telepon Indonesia (08xx atau +62)
   phone: (field = "telepon") =>
     body(field)
       .optional()
       .matches(/^(\+62|62|0)8[1-9][0-9]{6,10}$/)
       .withMessage("Format nomor telepon tidak valid"),
 
-  // Password validators
+  // Validator password minimal 6 karakter
   password: body("password")
     .isLength({ min: 6 })
     .withMessage("Password minimal 6 karakter"),
 
+  // Validator password kuat (huruf besar, kecil, angka)
   strongPassword: body("password")
     .isLength({ min: 8 })
     .withMessage("Password minimal 8 karakter")
@@ -48,7 +49,7 @@ const validators = {
     .matches(/[0-9]/)
     .withMessage("Password harus mengandung angka"),
 
-  // Name validator
+  // Validator nama (2-100 karakter)
   name: (field = "nama") =>
     body(field)
       .trim()
@@ -57,41 +58,43 @@ const validators = {
       .isLength({ min: 2, max: 100 })
       .withMessage(`${field} harus antara 2-100 karakter`),
 
-  // Text validators
+  // Validator field required (wajib diisi)
   required: (field, message) =>
     body(field)
       .trim()
       .notEmpty()
       .withMessage(message || `${field} wajib diisi`),
 
+  // Validator field optional
   optional: (field) => body(field).optional().trim(),
 
-  // Number validators
+  // Validator angka bulat positif
   positiveInt: (field) =>
     body(field)
       .isInt({ min: 1 })
       .withMessage(`${field} harus berupa angka positif`),
 
+  // Validator angka decimal positif
   positiveFloat: (field) =>
     body(field)
       .isFloat({ min: 0 })
       .withMessage(`${field} harus berupa angka positif`),
 
-  // Rating validator
+  // Validator rating 1-5
   rating: body("rating")
     .isInt({ min: 1, max: 5 })
     .withMessage("Rating harus antara 1-5"),
 
-  // Enum validator
+  // Validator enum (pilih dari list nilai)
   enum: (field, values, message) =>
     body(field)
       .isIn(values)
       .withMessage(
         message ||
-          `${field} tidak valid. Nilai yang diterima: ${values.join(", ")}`
+          `${field} tidak valid. Nilai yang diterima: ${values.join(", ")}`,
       ),
 
-  // Pagination validators
+  // Validator pagination (page dan limit)
   pagination: [
     query("page")
       .optional()
@@ -103,7 +106,7 @@ const validators = {
       .withMessage("Limit harus antara 1-100"),
   ],
 
-  // Coordinate validator
+  // Validator koordinat (Google Maps URL atau lat,lng)
   coordinate: (field = "koordinat") =>
     body(field)
       .optional()
@@ -118,7 +121,7 @@ const validators = {
         return true;
       }),
 
-  // Metode pembayaran validator
+  // Validator metode pembayaran
   metodePembayaran: body("metode_pembayaran")
     .optional()
     .isIn(["cash_on_visit", "transfer_on_visit"])
@@ -151,7 +154,7 @@ const validators = {
     .withMessage("Hari tidak valid"),
 };
 
-// Booking validation set
+// Set validator untuk booking/pemesanan
 const bookingValidators = {
   create: [
     body("id_layanan").isInt({ min: 1 }).withMessage("ID layanan tidak valid"),
@@ -258,6 +261,7 @@ const layananValidators = {
   ],
 };
 
+// Export semua validators
 module.exports = {
   validators,
   bookingValidators,

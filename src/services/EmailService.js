@@ -1,39 +1,45 @@
 const nodemailer = require("nodemailer");
 const config = require("../config");
 
+// Service untuk menangani pengiriman email
 class EmailService {
   constructor() {
+    // Setup transporter nodemailer dengan config SMTP
     this.transporter = nodemailer.createTransport({
-      host: config.email.host,
-      port: config.email.port,
-      secure: config.email.secure,
+      host: config.email.host, // SMTP host (contoh: smtp.gmail.com)
+      port: config.email.port, // SMTP port (587 untuk TLS)
+      secure: config.email.secure, // true untuk port 465, false untuk port lain
       auth: {
-        user: config.email.user,
-        pass: config.email.pass,
+        user: config.email.user, // Email pengirim
+        pass: config.email.pass, // Password atau app password
       },
     });
   }
 
+  // Fungsi utama untuk mengirim email
   async sendMail(to, subject, html) {
     try {
-      // Send email
+      // Kirim email menggunakan transporter
       await this.transporter.sendMail({
-        from: config.email.from,
-        to,
-        subject,
-        html,
+        from: config.email.from, // Nama dan email pengirim
+        to, // Email penerima
+        subject, // Subject email
+        html, // Konten HTML email
       });
 
       return { success: true };
     } catch (error) {
+      // Log error jika gagal kirim email
       console.error("Email sending failed:", error);
       return { success: false, error: error.message };
     }
   }
 
+  // Kirim email notifikasi ke admin saat ada booking baru
   async sendNewBookingNotification(booking, layanan) {
     const subject = `[Cureva] Pemesanan Baru: ${booking.kode_booking}`;
 
+    // Template HTML email dengan styling inline
     const html = `
       <!DOCTYPE html>
       <html>
@@ -153,6 +159,7 @@ class EmailService {
       </html>
     `;
 
+    // Kirim email ke admin
     return this.sendMail(
       config.email.adminEmail,
       subject,
@@ -162,6 +169,7 @@ class EmailService {
     );
   }
 
+  // Kirim email ke pasien saat status booking berubah (dikonfirmasi/ditolak)
   async sendBookingStatusUpdate(booking, status, additionalData = {}) {
     const statusMessages = {
       dikonfirmasi: {
@@ -251,6 +259,7 @@ class EmailService {
       </html>
     `;
 
+    // Kirim email ke pasien
     return this.sendMail(
       booking.pasien_email,
       info.subject,
@@ -259,6 +268,8 @@ class EmailService {
       booking.id,
     );
   }
+
+  // Kirim email verifikasi saat user register
 
   async sendVerificationEmail(email, nama, token) {
     const verifyUrl = `${config.frontendUrl}/verify-email?token=${token}`;
@@ -304,8 +315,11 @@ class EmailService {
       </html>
     `;
 
+    // Kirim email verifikasi ke user
     return this.sendMail(email, subject, html);
   }
+
+  // Kirim email untuk reset password
 
   async sendPasswordResetEmail(email, nama, token) {
     const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
@@ -351,8 +365,10 @@ class EmailService {
       </html>
     `;
 
+    // Kirim email reset password ke user
     return this.sendMail(email, subject, html);
   }
 }
 
+// Export instance dari EmailService
 module.exports = new EmailService();

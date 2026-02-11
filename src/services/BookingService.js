@@ -7,8 +7,9 @@ const EmailService = require("./EmailService");
 const JadwalService = require("./JadwalService");
 const config = require("../config");
 
+// Service untuk menangani logic business pemesanan/booking
 class BookingService {
-  // Status flow
+  // Daftar status yang mungkin ada pada pemesanan
   static STATUS = {
     MENUNGGU_KONFIRMASI: "menunggu_konfirmasi",
     DIKONFIRMASI: "dikonfirmasi",
@@ -21,6 +22,7 @@ class BookingService {
     DIBATALKAN_SISTEM: "dibatalkan_sistem",
   };
 
+  // Buat pemesanan baru
   async createBooking(userId, data) {
     const {
       id_layanan,
@@ -30,19 +32,19 @@ class BookingService {
       koordinat,
       keluhan,
       catatan_tambahan,
-      metode_pembayaran = "cash_on_visit",
+      metode_pembayaran = "cash_on_visit", // Default bayar tunai saat kunjungan
     } = data;
 
-    // Validate layanan
+    // Validasi: Cek apakah layanan exist dan aktif
     const layanan = await Layanan.findById(id_layanan);
     if (!layanan || !layanan.is_active) {
       throw { statusCode: 400, message: "Layanan tidak tersedia" };
     }
 
-    // Validate booking date
+    // Validasi: Cek tanggal booking (minimal X jam sebelum, maksimal X hari kedepan)
     await this.validateBookingDate(tanggal, waktu);
 
-    // Check daily booking limit
+    // Cek kuota booking per hari (maksimal berdasarkan config)
     const bookingCount = await Pemesanan.countByTanggal(tanggal);
     if (bookingCount >= config.booking.maxPerDay) {
       throw {
@@ -51,13 +53,13 @@ class BookingService {
       };
     }
 
-    // Check slot availability
+    // Cek apakah slot waktu masih tersedia
     const slot = await JadwalAktif.findBySlot(tanggal, waktu);
     if (!slot || slot.status !== "tersedia") {
       throw { statusCode: 400, message: "Slot waktu tidak tersedia" };
     }
 
-    // Create booking
+    // Buat data pemesanan di database
     const pemesanan = await Pemesanan.create({
       id_pasien: userId,
       id_layanan,
@@ -71,7 +73,7 @@ class BookingService {
       status: BookingService.STATUS.MENUNGGU_KONFIRMASI,
     });
 
-    // Auto-create payment record
+    // Auto-create record pembayaran dengan status menunggu
     await Pembayaran.create({
       id_pemesanan: pemesanan.id,
       metode: metode_pembayaran,
@@ -79,10 +81,10 @@ class BookingService {
       jumlah: layanan.harga,
     });
 
-    // Book the slot
+    // Tandai slot sebagai sudah dipesan
     await JadwalAktif.bookSlot(tanggal, waktu, pemesanan.id);
 
-    // Send notification to user
+    // Kirim notifikasi ke user
     await NotificationService.createNotification({
       id_user: userId,
       id_pemesanan: pemesanan.id,
@@ -92,10 +94,11 @@ class BookingService {
       link: `/booking/${pemesanan.kode_booking}`,
     });
 
-    // Send email to admin
+    // Kirim email notifikasi ke admin
     const fullBooking = await Pemesanan.findById(pemesanan.id);
     await EmailService.sendNewBookingNotification(fullBooking, layanan);
 
+    // Return data pemesanan beserta info layanan
     return {
       ...pemesanan,
       layanan_nama: layanan.nama,
@@ -104,11 +107,12 @@ class BookingService {
     };
   }
 
+  // Validasi tanggal dan waktu booking
   async validateBookingDate(tanggal, waktu) {
     const now = new Date();
     const bookingDate = new Date(`${tanggal}T${waktu}`);
 
-    // Check minimum hours before booking
+    // Cek minimal jam booking (contoh: minimal 6 jam sebelumnya)
     const minHours = config.booking.minHoursBeforeBooking;
     const minTime = new Date(now.getTime() + minHours * 60 * 60 * 1000);
 
@@ -119,7 +123,7 @@ class BookingService {
       };
     }
 
-    // Check maximum advance days
+    // Cek maksimal hari booking (contoh: maksimal 30 hari kedepan)
     const maxDate = new Date(now);
     maxDate.setDate(maxDate.getDate() + config.booking.advanceDays);
 
@@ -131,10 +135,12 @@ class BookingService {
     }
   }
 
+  // Ambil semua booking milik user tertentu
   async getBookingsByUser(userId, filters = {}) {
     return Pemesanan.findByPasien(userId, filters);
   }
 
+  // Ambil detail booking berdasarkan ID
   async getBookingById(id, userId = null, isAdmin = false) {
     const booking = await Pemesanan.findById(id);
 
@@ -142,7 +148,7 @@ class BookingService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
-    // Check ownership if not admin (use loose comparison for type safety)
+    // Cek kepemilikan: user hanya bisa lihat booking sendiri, admin bisa lihat semua
     if (!isAdmin && userId && booking.id_pasien != userId) {
       throw {
         statusCode: 403,
@@ -150,12 +156,13 @@ class BookingService {
       };
     }
 
-    // Get payment info
+    // Ambil info pembayaran terkait booking ini
     const pembayaran = await Pembayaran.findByPemesanan(id);
 
     return { ...booking, pembayaran };
   }
 
+  // Ambil booking berdasarkan kode booking unik
   async getBookingByKode(kodeBooking, userId = null, isAdmin = false) {
     const booking = await Pemesanan.findByKodeBooking(kodeBooking);
 
@@ -163,6 +170,7 @@ class BookingService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
+    // Cek kepemilikan
     if (!isAdmin && userId && booking.id_pasien != userId) {
       throw {
         statusCode: 403,
@@ -175,6 +183,7 @@ class BookingService {
     return { ...booking, pembayaran };
   }
 
+  // Update status booking (admin only)
   async updateStatus(id, status, additionalData = {}, adminId = null) {
     const booking = await Pemesanan.findById(id);
 
@@ -182,19 +191,21 @@ class BookingService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
-    // Validate status transition
+    // Validasi: Cek apakah perpindahan status valid
     this.validateStatusTransition(booking.status, status);
 
-    // Update booking status
+    // Update status di database
     await Pemesanan.updateStatus(id, status, additionalData);
 
-    // Handle side effects based on status
+    // Handle side effects: notifikasi, email, release slot, dll
     await this.handleStatusChange(booking, status, additionalData);
 
     return Pemesanan.findById(id);
   }
 
+  // Validasi perpindahan status (contoh: dari menunggu bisa ke dikonfirmasi atau ditolak)
   validateStatusTransition(currentStatus, newStatus) {
+    // Mapping status yang valid untuk setiap status
     const validTransitions = {
       menunggu_konfirmasi: [
         "dikonfirmasi",
@@ -219,12 +230,13 @@ class BookingService {
       ],
       dalam_perjalanan: ["sedang_berlangsung", "selesai", "dibatalkan_sistem"],
       sedang_berlangsung: ["selesai"],
-      selesai: [],
-      ditolak: [],
-      dibatalkan_pasien: [],
+      selesai: [], // Status selesai tidak bisa diubah lagi
+      ditolak: [], // Status ditolak tidak bisa diubah lagi
+      dibatalkan_pasien: [], // Status dibatalkan tidak bisa diubah lagi
       dibatalkan_sistem: [],
     };
 
+    // Cek apakah perpindahan status valid
     if (!validTransitions[currentStatus]?.includes(newStatus)) {
       throw {
         statusCode: 400,
@@ -233,7 +245,9 @@ class BookingService {
     }
   }
 
+  // Handle side effects saat status berubah (kirim notif, email, release slot)
   async handleStatusChange(booking, newStatus, additionalData) {
+    // Mapping pesan notifikasi untuk setiap perubahan status
     const notifMessages = {
       dikonfirmasi: {
         judul: "Pemesanan Dikonfirmasi",
@@ -273,7 +287,7 @@ class BookingService {
       },
     };
 
-    // Send notification to user
+    // Kirim notifikasi ke user
     if (notifMessages[newStatus]) {
       await NotificationService.createNotification({
         id_user: booking.id_pasien,
@@ -284,23 +298,24 @@ class BookingService {
       });
     }
 
-    // Release slot if cancelled/rejected
+    // Release slot jika booking dibatalkan/ditolak
     if (
       ["ditolak", "dibatalkan_pasien", "dibatalkan_sistem"].includes(newStatus)
     ) {
       await JadwalAktif.releaseSlot(booking.id);
     }
 
-    // Send email for certain statuses
+    // Kirim email untuk status tertentu
     if (["dikonfirmasi", "ditolak"].includes(newStatus)) {
       await EmailService.sendBookingStatusUpdate(
         booking,
         newStatus,
-        additionalData
+        additionalData,
       );
     }
   }
 
+  // User membatalkan booking sendiri
   async cancelBooking(id, userId) {
     const booking = await Pemesanan.findById(id);
 
@@ -308,7 +323,7 @@ class BookingService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
-    // Use loose comparison to handle number vs string type mismatch
+    // Cek kepemilikan booking
     if (booking.id_pasien != userId) {
       throw {
         statusCode: 403,
@@ -316,16 +331,16 @@ class BookingService {
       };
     }
 
-    // Check if can be cancelled
+    // Cek apakah booking bisa dibatalkan (hanya status tertentu yang bisa)
     if (
       !["menunggu_konfirmasi", "dikonfirmasi", "dijadwalkan"].includes(
-        booking.status
+        booking.status,
       )
     ) {
       throw { statusCode: 400, message: "Pemesanan tidak dapat dibatalkan" };
     }
 
-    // Check cancellation time limit
+    // Cek batas waktu pembatalan (contoh: minimal 6 jam sebelum jadwal)
     const bookingTime = new Date(`${booking.tanggal}T${booking.waktu}`);
     const now = new Date();
     const hoursUntilBooking = (bookingTime - now) / (1000 * 60 * 60);
@@ -337,9 +352,11 @@ class BookingService {
       };
     }
 
+    // Update status menjadi dibatalkan_pasien
     return this.updateStatus(id, "dibatalkan_pasien");
   }
 
+  // User memberikan rating setelah booking selesai
   async addRating(id, userId, rating, review) {
     const booking = await Pemesanan.findById(id);
 
@@ -347,7 +364,7 @@ class BookingService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
-    // Use loose comparison to handle number vs string type mismatch
+    // Cek kepemilikan booking
     if (booking.id_pasien != userId) {
       throw {
         statusCode: 403,
@@ -355,6 +372,7 @@ class BookingService {
       };
     }
 
+    // Cek apakah booking sudah selesai
     if (booking.status !== "selesai") {
       throw {
         statusCode: 400,
@@ -363,6 +381,7 @@ class BookingService {
       };
     }
 
+    // Cek apakah sudah pernah memberi rating
     if (booking.rating) {
       throw {
         statusCode: 400,
@@ -370,9 +389,10 @@ class BookingService {
       };
     }
 
+    // Simpan rating ke database
     await Pemesanan.addRating(id, rating, review);
 
-    // Notify about the review
+    // Kirim notifikasi terima kasih
     await NotificationService.createNotification({
       id_user: booking.id_pasien,
       id_pemesanan: id,
@@ -384,22 +404,27 @@ class BookingService {
     return Pemesanan.findById(id);
   }
 
+  // Ambil semua booking (admin only) dengan filter
   async getAllBookings(filters = {}) {
     return Pemesanan.findAll(filters);
   }
 
+  // Ambil semua rating dari booking yang sudah selesai
   async getAllRatings(filters = {}) {
     return Pemesanan.getAllRatings(filters);
   }
 
+  // Ambil statistik booking (total, selesai, dibatalkan, rata-rata rating)
   async getStatistik(filters = {}) {
     return Pemesanan.getStatistik(filters);
   }
 
+  // Ambil booking yang akan datang (upcoming)
   async getUpcoming(userId = null) {
     return Pemesanan.getUpcoming(userId);
   }
 
+  // Hapus booking (admin only)
   async deleteBooking(id) {
     const booking = await Pemesanan.findById(id);
 
@@ -407,15 +432,18 @@ class BookingService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
-    // Release slot if exists
+    // Release slot jika ada
     await JadwalAktif.releaseSlot(id);
 
-    // Delete related records
+    // Hapus record pembayaran terkait
     await Pembayaran.deleteByPemesanan(id);
+
+    // Hapus booking
     await Pemesanan.delete(id);
 
     return true;
   }
 }
 
+// Export instance dari BookingService
 module.exports = new BookingService();
