@@ -19,7 +19,7 @@ class Notifikasi {
       [id_user, id_pemesanan, type, judul, pesan, link],
     );
 
-    return { id: result.insertId, ...data };
+    return this.findById(result.insertId);
   }
 
   // Cari notifikasi berdasarkan ID

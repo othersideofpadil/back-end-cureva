@@ -1,9 +1,11 @@
 const express = require("express");
+const http = require("http");
 const cors = require("cors");
 const config = require("./config");
 const routes = require("./routes");
 const { errorHandler, notFound } = require("./middleware");
 const { testConnection } = require("./config/database");
+const { initSocket } = require("./utils/socket");
 
 const app = express();
 
@@ -61,11 +63,15 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    // Jalankan server Express
-    const server = app.listen(PORT, () => {
+    // Jalankan server HTTP + Express
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
+
+    const server = httpServer.listen(PORT, () => {
       console.log(`Port: ${PORT}`);
       console.log(`URL: http://localhost:${PORT}`);
       console.log(`API: http://localhost:${PORT}/api`);
+      console.log(`Socket: ws://localhost:${PORT}`);
     });
 
     // Tangani error saat server start

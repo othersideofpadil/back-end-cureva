@@ -1,10 +1,15 @@
 const Notifikasi = require("../models/Notifikasi");
+const { emitToUser } = require("../utils/socket");
 
 // Service untuk menangani logic business notifikasi
 class NotificationService {
   // Buat notifikasi baru
   async createNotification(data) {
-    return Notifikasi.create(data);
+    const notification = await Notifikasi.create(data);
+
+    emitToUser(data.id_user, "notification:new", notification);
+
+    return notification;
   }
 
   // Ambil semua notifikasi milik user dengan filter
