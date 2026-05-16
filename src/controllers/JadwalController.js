@@ -79,6 +79,35 @@ class JadwalController {
     }
   };
 
+  // Ambil semua slot untuk tanggal tertentu (public)
+  // Digunakan untuk menampilkan slot realtime di landing page
+  getSlotsPublic = async (req, res) => {
+    try {
+      const { tanggal } = req.params;
+
+      if (!tanggal) {
+        return res.status(400).json({
+          success: false,
+          message: "Tanggal diperlukan",
+        });
+      }
+
+      const slots = await JadwalService.getSlotsByDate(tanggal);
+
+      res.json({
+        success: true,
+        data: slots,
+      });
+    } catch (error) {
+      console.error("Error get public slots:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message:
+          error.message || "Terjadi kesalahan saat mengambil slot jadwal",
+      });
+    }
+  };
+
   // Endpoint admin
   // Ambil semua slot untuk tanggal tertentu (termasuk yang sudah dibooking/diblokir)
   // Admin perlu melihat semua untuk manajemen jadwal

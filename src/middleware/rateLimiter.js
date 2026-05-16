@@ -21,12 +21,12 @@ const generalLimiter = rateLimit({
  * Lebih ketat untuk mencegah brute force attack
  */
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 menit dalam milidetik
-  max: 10, // Maksimal 10 percobaan login dalam 15 menit
+  windowMs: 5 * 60 * 1000, // 5 menit dalam milidetik
+  max: 15, // Maksimal 15 percobaan login dalam 5 menit
   message: {
     success: false,
     message:
-      "Terlalu banyak percobaan login. Silakan coba lagi dalam 15 menit.",
+      "Terlalu banyak percobaan login. Silakan coba lagi dalam 5 menit.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -37,8 +37,8 @@ const authLimiter = rateLimit({
  * Mencegah spam booking
  */
 const bookingLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 jam dalam milidetik
-  max: 20, // Maksimal 20 pemesanan per jam per user
+  windowMs: 15 * 60 * 1000, // 15 menit dalam milidetik
+  max: 20, // Maksimal 20 pemesanan per 15 menit per user
   message: {
     success: false,
     message: "Terlalu banyak pemesanan. Silakan coba lagi nanti.",

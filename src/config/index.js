@@ -56,7 +56,7 @@ module.exports = {
   booking: {
     maxPerDay: 4,
     advanceDays: 14,
-    minHoursBeforeBooking: 3,
+    minHoursBeforeBooking: 0,
     cancellationHours: 24,
   },
 

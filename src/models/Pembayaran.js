@@ -136,7 +136,7 @@ class Pembayaran {
       values.push(parseInt(filters.limit));
     }
 
-    const [rows] = await pool.execute(query, values);
+    const [rows] = await pool.query(query, values);
     return rows;
   }
 

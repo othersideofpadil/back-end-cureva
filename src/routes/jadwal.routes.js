@@ -42,7 +42,12 @@ router.get("/available-dates", JadwalController.getAvailableDates);
 router.get(
   "/available/:tanggal",
   validate(dateValidation),
-  JadwalController.getAvailableSlots
+  JadwalController.getAvailableSlots,
+);
+router.get(
+  "/slots-public/:tanggal",
+  validate(dateValidation),
+  JadwalController.getSlotsPublic,
 );
 
 // Admin routes
@@ -52,29 +57,29 @@ router.use(isAdmin);
 router.get(
   "/slots/:tanggal",
   validate(dateValidation),
-  JadwalController.getSlotsByDate
+  JadwalController.getSlotsByDate,
 );
 router.put(
   "/default/:hari",
   validate(updateDefaultValidation),
-  JadwalController.updateJadwalDefault
+  JadwalController.updateJadwalDefault,
 );
 router.post(
   "/generate",
   validate(generateSlotsValidation),
-  JadwalController.generateSlots
+  JadwalController.generateSlots,
 );
 router.post("/slot/:id/block", JadwalController.blockSlot);
 router.post("/slot/:id/unblock", JadwalController.unblockSlot);
 router.post(
   "/libur/:tanggal",
   validate(dateValidation),
-  JadwalController.setLibur
+  JadwalController.setLibur,
 );
 router.delete(
   "/libur/:tanggal",
   validate(dateValidation),
-  JadwalController.cancelLibur
+  JadwalController.cancelLibur,
 );
 
 module.exports = router;

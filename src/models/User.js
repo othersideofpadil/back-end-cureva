@@ -168,7 +168,7 @@ class User {
       values.push(parseInt(filters.offset));
     }
 
-    const [rows] = await pool.execute(query, values);
+    const [rows] = await pool.query(query, values);
     return rows;
   }
 

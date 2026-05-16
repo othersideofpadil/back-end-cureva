@@ -255,10 +255,10 @@ class BookingService {
       },
       ditolak: {
         judul: "Pemesanan Ditolak",
-        pesan: `Maaf, pemesanan ${
-          booking.kode_booking
-        } tidak dapat diproses. Alasan: ${
-          additionalData.alasan_penolakan || "Tidak tersedia"
+        pesan: `Maaf, pemesanan ${booking.kode_booking} tidak dapat diproses.${
+          additionalData.alasan_penolakan
+            ? ` Alasan: ${additionalData.alasan_penolakan}`
+            : ""
         }`,
       },
       dijadwalkan: {

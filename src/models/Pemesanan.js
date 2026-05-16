@@ -116,7 +116,7 @@ class Pemesanan {
       values.push(parseInt(filters.limit));
     }
 
-    const [rows] = await pool.execute(query, values);
+    const [rows] = await pool.query(query, values);
     return rows;
   }
 
@@ -177,7 +177,7 @@ class Pemesanan {
       values.push(parseInt(filters.offset));
     }
 
-    const [rows] = await pool.execute(query, values);
+    const [rows] = await pool.query(query, values);
     return rows;
   }
 
@@ -287,7 +287,7 @@ class Pemesanan {
     query += " ORDER BY p.tanggal ASC, p.waktu ASC LIMIT ?";
     values.push(limit);
 
-    const [rows] = await pool.execute(query, values);
+    const [rows] = await pool.query(query, values);
     return rows;
   }
 
@@ -296,7 +296,7 @@ class Pemesanan {
     const limit = filters.limit || 10;
     const offset = filters.offset || 0;
 
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       `SELECT p.id as id_pemesanan, p.rating, p.review, p.tanggal_review,
               u.nama as nama_pasien, u.email as email_pasien,
               l.nama as nama_layanan

@@ -35,6 +35,9 @@ class JadwalService {
     // Ambil semua slot yang tersedia
     const slots = await JadwalAktif.findAvailable(tanggal);
 
+    const allSlots = await JadwalAktif.findByTanggal(tanggal);
+    const bufferTimes = this.getBufferTimes(allSlots);
+
     // Filter slot yang masih valid (tidak sudah lewat)
     const now = new Date();
     const minTime = new Date(
@@ -43,8 +46,46 @@ class JadwalService {
 
     return slots.filter((slot) => {
       const slotTime = new Date(`${tanggal}T${slot.waktu_mulai}`);
-      return slotTime > minTime; // Hanya slot di masa depan
+      const slotStart = this.normalizeTime(slot.waktu_mulai);
+      return slotTime > minTime && !bufferTimes.has(slotStart);
     });
+  }
+
+  normalizeTime(timeStr) {
+    return timeStr ? timeStr.slice(0, 5) : "";
+  }
+
+  addMinutesToTime(timeStr, minutesToAdd) {
+    const [hour, minute] = this.normalizeTime(timeStr).split(":").map(Number);
+    const totalMinutes = hour * 60 + minute + minutesToAdd;
+
+    if (Number.isNaN(totalMinutes) || totalMinutes < 0) {
+      return null;
+    }
+
+    const hours = Math.floor(totalMinutes / 60)
+      .toString()
+      .padStart(2, "0");
+    const minutes = (totalMinutes % 60).toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
+  getBufferTimes(slots) {
+    const bufferTimes = new Set();
+
+    slots
+      .filter((slot) => slot.status === "dipesan")
+      .forEach((slot) => {
+        const nextTime = this.addMinutesToTime(
+          slot.waktu_mulai,
+          JadwalService.SLOT_DURATION,
+        );
+        if (nextTime) {
+          bufferTimes.add(nextTime);
+        }
+      });
+
+    return bufferTimes;
   }
 
   // Ambil semua slot untuk tanggal tertentu (available, booked, blocked)

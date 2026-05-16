@@ -247,7 +247,8 @@ class BookingController {
   updateStatus = async (req, res) => {
     try {
       const { id } = req.params;
-      const { status, catatan_admin, alasan_penolakan } = req.body;
+      const { status, catatan_admin, alasan_penolakan, alasan } = req.body;
+      const resolvedAlasanPenolakan = alasan_penolakan ?? alasan;
 
       // Validasi: status wajib diisi
       if (!status) {
@@ -262,7 +263,7 @@ class BookingController {
         status,
         {
           catatan_admin, // Catatan internal admin
-          alasan_penolakan, // Alasan jika ditolak
+          alasan_penolakan: resolvedAlasanPenolakan, // Alasan jika ditolak
         },
         req.user.id, // ID admin yang melakukan update
       );
