@@ -27,7 +27,7 @@ router.get("/pemesanan/:id", PaymentController.getByPemesanan);
 router.put(
   "/pemesanan/:id/method",
   validate(updateMethodValidation),
-  PaymentController.updateMethod
+  PaymentController.updateMethod,
 );
 
 // Admin routes
@@ -37,8 +37,9 @@ router.put(
   "/pemesanan/:id/status",
   isAdmin,
   validate(updateStatusValidation),
-  PaymentController.updateStatus
+  PaymentController.updateStatus,
 );
 router.post("/pemesanan/:id/mark-paid", isAdmin, PaymentController.markAsPaid);
+router.delete("/:id", isAdmin, PaymentController.delete);
 
 module.exports = router;

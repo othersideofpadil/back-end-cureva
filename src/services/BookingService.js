@@ -94,6 +94,9 @@ class BookingService {
       link: `/booking/${pemesanan.kode_booking}`,
     });
 
+    // Kirim notifikasi ke admin (in-app)
+    await NotificationService.notifyAdminsNewBooking(pemesanan);
+
     // Kirim email notifikasi ke admin
     const fullBooking = await Pemesanan.findById(pemesanan.id);
     await EmailService.sendNewBookingNotification(fullBooking, layanan);
@@ -279,11 +282,19 @@ class BookingService {
       },
       dibatalkan_pasien: {
         judul: "Pemesanan Dibatalkan",
-        pesan: `Pemesanan ${booking.kode_booking} telah dibatalkan.`,
+        pesan: `Pemesanan ${booking.kode_booking} telah dibatalkan.${
+          additionalData.alasan_penolakan
+            ? ` Alasan: ${additionalData.alasan_penolakan}`
+            : ""
+        }`,
       },
       dibatalkan_sistem: {
         judul: "Pemesanan Dibatalkan",
-        pesan: `Pemesanan ${booking.kode_booking} telah dibatalkan oleh sistem.`,
+        pesan: `Pemesanan ${booking.kode_booking} telah dibatalkan oleh sistem.${
+          additionalData.alasan_penolakan
+            ? ` Alasan: ${additionalData.alasan_penolakan}`
+            : ""
+        }`,
       },
     };
 
@@ -303,6 +314,15 @@ class BookingService {
       ["ditolak", "dibatalkan_pasien", "dibatalkan_sistem"].includes(newStatus)
     ) {
       await JadwalAktif.releaseSlot(booking.id);
+
+      // Tandai pembayaran gagal jika pemesanan dibatalkan/ditolak
+      await Pembayaran.updateByPemesanan(booking.id, {
+        status: "gagal",
+        catatan:
+          newStatus === "ditolak"
+            ? "Pembayaran dibatalkan karena pemesanan ditolak"
+            : "Pembayaran dibatalkan karena pemesanan dibatalkan",
+      });
     }
 
     // Kirim email untuk status tertentu
@@ -316,7 +336,7 @@ class BookingService {
   }
 
   // User membatalkan booking sendiri
-  async cancelBooking(id, userId) {
+  async cancelBooking(id, userId, alasan) {
     const booking = await Pemesanan.findById(id);
 
     if (!booking) {
@@ -352,8 +372,71 @@ class BookingService {
       };
     }
 
+    if (!alasan || !alasan.trim()) {
+      throw { statusCode: 400, message: "Alasan pembatalan wajib diisi" };
+    }
+
     // Update status menjadi dibatalkan_pasien
-    return this.updateStatus(id, "dibatalkan_pasien");
+    return this.updateStatus(id, "dibatalkan_pasien", {
+      alasan_penolakan: alasan.trim(),
+    });
+  }
+
+  // User mengajukan penjadwalan ulang booking
+  async rescheduleBooking(id, userId, data) {
+    const { tanggal, waktu } = data;
+    const booking = await Pemesanan.findById(id);
+
+    if (!booking) {
+      throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
+    }
+
+    if (booking.id_pasien != userId) {
+      throw {
+        statusCode: 403,
+        message: "Anda tidak memiliki akses ke pemesanan ini",
+      };
+    }
+
+    if (booking.status !== "dikonfirmasi") {
+      throw {
+        statusCode: 400,
+        message: "Pemesanan tidak dapat dijadwalkan ulang",
+      };
+    }
+
+    await this.validateBookingDate(tanggal, waktu);
+
+    await JadwalService.generateSlotsForDate(tanggal);
+    const slot = await JadwalAktif.findBySlot(tanggal, waktu);
+    if (!slot || slot.status !== "tersedia") {
+      throw { statusCode: 400, message: "Slot waktu tidak tersedia" };
+    }
+
+    await JadwalAktif.releaseSlot(booking.id);
+    const booked = await JadwalAktif.bookSlot(tanggal, waktu, booking.id);
+    if (!booked) {
+      await JadwalAktif.bookSlot(booking.tanggal, booking.waktu, booking.id);
+      throw { statusCode: 400, message: "Slot waktu tidak tersedia" };
+    }
+
+    await Pemesanan.update(id, {
+      tanggal,
+      waktu,
+      status: "menunggu_konfirmasi",
+      tanggal_konfirmasi: null,
+    });
+
+    await NotificationService.createNotification({
+      id_user: booking.id_pasien,
+      id_pemesanan: booking.id,
+      type: "pemesanan",
+      judul: "Jadwal Ulang Diajukan",
+      pesan: `Permintaan jadwal ulang untuk pemesanan ${booking.kode_booking} menunggu konfirmasi fisioterapis.`,
+      link: `/booking/${booking.kode_booking}`,
+    });
+
+    return Pemesanan.findById(id);
   }
 
   // User memberikan rating setelah booking selesai
@@ -412,6 +495,53 @@ class BookingService {
   // Ambil semua rating dari booking yang sudah selesai
   async getAllRatings(filters = {}) {
     return Pemesanan.getAllRatings(filters);
+  }
+
+  // Admin: update rating & review
+  async updateRatingByAdmin(id, rating, review) {
+    const booking = await Pemesanan.findById(id);
+
+    if (!booking) {
+      throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
+    }
+
+    if (booking.status !== "selesai") {
+      throw {
+        statusCode: 400,
+        message: "Rating hanya dapat diperbarui untuk pemesanan selesai",
+      };
+    }
+
+    if (!booking.rating) {
+      throw {
+        statusCode: 400,
+        message: "Rating belum tersedia untuk pemesanan ini",
+      };
+    }
+
+    const nextReview = review !== undefined ? review : booking.review;
+
+    await Pemesanan.updateRating(id, rating, nextReview);
+    return Pemesanan.findById(id);
+  }
+
+  // Admin: hapus rating & review
+  async deleteRatingByAdmin(id) {
+    const booking = await Pemesanan.findById(id);
+
+    if (!booking) {
+      throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
+    }
+
+    if (!booking.rating) {
+      throw {
+        statusCode: 400,
+        message: "Rating tidak ditemukan untuk pemesanan ini",
+      };
+    }
+
+    await Pemesanan.deleteRating(id);
+    return true;
   }
 
   // Ambil statistik booking (total, selesai, dibatalkan, rata-rata rating)

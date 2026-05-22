@@ -1,66 +1,5 @@
 const { pool } = require("../config/database");
 
-// Model untuk tabel jadwal_default - template jadwal per hari (Senin-Minggu)
-class JadwalDefault {
-  // Ambil semua jadwal default (7 hari)
-  static async findAll() {
-    const [rows] = await pool.execute(
-      'SELECT * FROM jadwal_default ORDER BY FIELD(hari, "senin", "selasa", "rabu", "kamis", "jumat", "sabtu", "minggu")',
-    );
-    return rows;
-  }
-
-  // Cari jadwal default berdasarkan hari (senin, selasa, dst)
-  static async findByHari(hari) {
-    const [rows] = await pool.execute(
-      "SELECT * FROM jadwal_default WHERE hari = ?",
-      [hari.toLowerCase()],
-    );
-    return rows[0] || null;
-  }
-
-  // Ambil hanya jadwal yang aktif (hari operasional)
-  static async findActive() {
-    const [rows] = await pool.execute(
-      'SELECT * FROM jadwal_default WHERE is_active = 1 ORDER BY FIELD(hari, "senin", "selasa", "rabu", "kamis", "jumat", "sabtu", "minggu")',
-    );
-    return rows;
-  }
-
-  // Update jadwal default untuk hari tertentu (admin only)
-  static async update(hari, data) {
-    const fields = [];
-    const values = [];
-
-    // Build dynamic query berdasarkan field yang diupdate
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    });
-
-    if (fields.length === 0) return null;
-
-    values.push(hari.toLowerCase());
-    const [result] = await pool.execute(
-      `UPDATE jadwal_default SET ${fields.join(", ")} WHERE hari = ?`,
-      values,
-    );
-
-    return result.affectedRows > 0;
-  }
-
-  // Toggle status aktif/non-aktif untuk hari tertentu
-  static async toggleActive(hari) {
-    const [result] = await pool.execute(
-      "UPDATE jadwal_default SET is_active = NOT is_active WHERE hari = ?",
-      [hari.toLowerCase()],
-    );
-    return result.affectedRows > 0;
-  }
-}
-
 // Model untuk tabel jadwal_aktif - slot booking aktual per tanggal
 class JadwalAktif {
   // Ambil semua slot untuk tanggal tertentu (tersedia, dipesan, diblock)
@@ -176,6 +115,15 @@ class JadwalAktif {
     return result.affectedRows > 0;
   }
 
+  // Hapus slot berdasarkan ID
+  static async deleteById(id) {
+    const [result] = await pool.execute(
+      "DELETE FROM jadwal_aktif WHERE id = ?",
+      [id],
+    );
+    return result.affectedRows > 0;
+  }
+
   // Tandai slot sebagai dipesan (saat booking dibuat)
   static async bookSlot(tanggal, waktuMulai, idPemesanan) {
     const [result] = await pool.execute(
@@ -240,7 +188,15 @@ class JadwalAktif {
     );
     return result.affectedRows;
   }
+
+  // Hapus semua slot yang masih tersedia
+  static async deleteAllAvailable() {
+    const [result] = await pool.execute(
+      "DELETE FROM jadwal_aktif WHERE status = 'tersedia'",
+    );
+    return result.affectedRows;
+  }
 }
 
-// Export kedua model (JadwalDefault dan JadwalAktif)
-module.exports = { JadwalDefault, JadwalAktif };
+// Export model JadwalAktif
+module.exports = { JadwalAktif };

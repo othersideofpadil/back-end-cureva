@@ -68,11 +68,22 @@ class Layanan {
       gambar_url,
       is_active = 1,
     } = data;
+    const resolvedDeskripsi = deskripsi === undefined ? null : deskripsi;
+    const resolvedKategori = kategori === undefined ? null : kategori;
+    const resolvedGambarUrl = gambar_url === undefined ? null : gambar_url;
 
     const [result] = await pool.execute(
       `INSERT INTO layanan (nama, deskripsi, harga, durasi, kategori, gambar_url, is_active)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [nama, deskripsi, harga, durasi, kategori, gambar_url, is_active],
+      [
+        nama,
+        resolvedDeskripsi,
+        harga,
+        durasi,
+        resolvedKategori,
+        resolvedGambarUrl,
+        is_active,
+      ],
     );
 
     return { id: result.insertId, ...data };

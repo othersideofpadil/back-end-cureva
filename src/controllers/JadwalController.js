@@ -58,8 +58,7 @@ class JadwalController {
     }
   };
 
-  // Ambil jadwal default (jam operasional per hari)
-  // Untuk ditampilkan di halaman informasi
+  // Ambil jadwal default (jam operasional per hari) dari konfigurasi
   getJadwalDefault = async (req, res) => {
     try {
       const jadwal = await JadwalService.getJadwalDefault();
@@ -139,35 +138,6 @@ class JadwalController {
     }
   };
 
-  // Update jadwal default (jam operasional)
-  // Contoh: ubah jam buka Senin dari 08:00-17:00 menjadi 09:00-18:00
-  updateJadwalDefault = async (req, res) => {
-    try {
-      const { hari } = req.params; // Contoh: 'senin', 'selasa'
-      const { waktu_mulai, waktu_selesai, is_active } = req.body;
-
-      // Update jadwal default untuk hari tertentu
-      await JadwalService.updateJadwalDefault(hari, {
-        waktu_mulai, // Jam mulai baru
-        waktu_selesai, // Jam selesai baru
-        is_active, // Apakah hari itu aktif/tidak
-      });
-
-      res.json({
-        success: true,
-        message: "Jadwal default berhasil diperbarui",
-      });
-    } catch (error) {
-      // Tangkap error dan kirim response error
-      console.error("Error update jadwal default:", error);
-      res.status(error.statusCode || 500).json({
-        success: false,
-        message:
-          error.message || "Terjadi kesalahan saat update jadwal default",
-      });
-    }
-  };
-
   // Generate slot jadwal untuk rentang tanggal
   // Digunakan admin untuk membuat slot booking di masa depan
   generateSlots = async (req, res) => {
@@ -222,6 +192,79 @@ class JadwalController {
       res.status(error.statusCode || 500).json({
         success: false,
         message: error.message || "Terjadi kesalahan saat blokir slot",
+      });
+    }
+  };
+
+  // Admin: Buat slot manual
+  createSlot = async (req, res) => {
+    try {
+      const { tanggal, waktu_mulai, waktu_selesai, status, keterangan } =
+        req.body;
+
+      const slot = await JadwalService.createSlot({
+        tanggal,
+        waktu_mulai,
+        waktu_selesai,
+        status,
+        keterangan,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Slot berhasil dibuat",
+        data: slot,
+      });
+    } catch (error) {
+      console.error("Error create slot:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Terjadi kesalahan saat membuat slot",
+      });
+    }
+  };
+
+  // Admin: Update slot manual
+  updateSlot = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status, keterangan } = req.body;
+
+      const slot = await JadwalService.updateSlot(id, {
+        status,
+        keterangan,
+      });
+
+      res.json({
+        success: true,
+        message: "Slot berhasil diperbarui",
+        data: slot,
+      });
+    } catch (error) {
+      console.error("Error update slot:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Terjadi kesalahan saat memperbarui slot",
+      });
+    }
+  };
+
+  // Admin: Hapus slot manual
+  deleteSlot = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await JadwalService.deleteSlot(id);
+
+      res.json({
+        success: true,
+        message: "Slot berhasil dihapus",
+      });
+    } catch (error) {
+      console.error("Error delete slot:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Terjadi kesalahan saat menghapus slot",
       });
     }
   };

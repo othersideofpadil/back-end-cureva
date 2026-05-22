@@ -192,6 +192,26 @@ class PaymentController {
       });
     }
   };
+
+  // Hapus pembayaran (admin)
+  delete = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await PaymentService.deletePayment(id, true);
+
+      res.json({
+        success: true,
+        message: "Pembayaran berhasil dihapus",
+      });
+    } catch (error) {
+      console.error("Error delete payment:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Terjadi kesalahan saat menghapus pembayaran",
+      });
+    }
+  };
 }
 
 module.exports = new PaymentController();

@@ -176,6 +176,14 @@ class Pembayaran {
     );
     return result.affectedRows > 0;
   }
+
+  // Hapus pembayaran berdasarkan ID pembayaran
+  static async delete(id) {
+    const [result] = await pool.execute("DELETE FROM pembayaran WHERE id = ?", [
+      id,
+    ]);
+    return result.affectedRows > 0;
+  }
 }
 
 // Export model Pembayaran

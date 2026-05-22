@@ -91,7 +91,27 @@ class LayananController {
   // Buat layanan baru (admin only)
   create = async (req, res) => {
     try {
-      const { nama, deskripsi, harga, durasi, kategori, gambar_url } = req.body;
+      const {
+        nama,
+        deskripsi,
+        harga,
+        durasi,
+        kategori,
+        gambar_url,
+        is_active,
+      } = req.body;
+      const resolvedIsActive =
+        is_active === undefined
+          ? 1
+          : is_active === true ||
+              is_active === "true" ||
+              is_active === 1 ||
+              is_active === "1"
+            ? 1
+            : 0;
+      const resolvedGambarUrl = req.file
+        ? `/uploads/layanan/${req.file.filename}`
+        : gambar_url || null;
 
       // Validasi input wajib
       if (!nama || !harga || !durasi) {
@@ -104,11 +124,12 @@ class LayananController {
       // Insert data ke database
       const layanan = await Layanan.create({
         nama,
-        deskripsi,
+        deskripsi: deskripsi || null,
         harga,
         durasi,
-        kategori,
-        gambar_url,
+        kategori: kategori || null,
+        gambar_url: resolvedGambarUrl,
+        is_active: resolvedIsActive,
       });
 
       // Response dengan status 201 (Created)
@@ -140,6 +161,18 @@ class LayananController {
         gambar_url,
         is_active,
       } = req.body;
+      const resolvedIsActive =
+        is_active === undefined
+          ? undefined
+          : is_active === true ||
+              is_active === "true" ||
+              is_active === 1 ||
+              is_active === "1"
+            ? 1
+            : 0;
+      const resolvedGambarUrl = req.file
+        ? `/uploads/layanan/${req.file.filename}`
+        : gambar_url;
 
       // Cek apakah layanan ada sebelum update
       const existing = await Layanan.findById(id);
@@ -153,12 +186,12 @@ class LayananController {
       // Update data di database
       await Layanan.update(id, {
         nama,
-        deskripsi,
+        deskripsi: deskripsi === "" ? null : deskripsi,
         harga,
         durasi,
-        kategori,
-        gambar_url,
-        is_active,
+        kategori: kategori === "" ? null : kategori,
+        gambar_url: resolvedGambarUrl === "" ? null : resolvedGambarUrl,
+        is_active: resolvedIsActive,
       });
 
       // Ambil data terbaru setelah update

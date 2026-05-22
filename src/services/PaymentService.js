@@ -73,6 +73,14 @@ class PaymentService {
       throw { statusCode: 404, message: "Pemesanan tidak ditemukan" };
     }
 
+    if (pemesanan.status !== "selesai") {
+      throw {
+        statusCode: 400,
+        message:
+          "Pembayaran hanya dapat dikonfirmasi setelah pemesanan selesai",
+      };
+    }
+
     // Cari data pembayaran terkait pemesanan
     const payment = await Pembayaran.findByPemesanan(idPemesanan);
     if (!payment) {
@@ -172,6 +180,24 @@ class PaymentService {
   // Ambil statistik pembayaran (total, dibayar, pending, dll)
   async getStatistik(filters = {}) {
     return Pembayaran.getStatistik(filters);
+  }
+
+  // Hapus pembayaran (admin only)
+  async deletePayment(id, isAdmin = false) {
+    if (!isAdmin) {
+      throw {
+        statusCode: 403,
+        message: "Hanya admin yang dapat menghapus pembayaran",
+      };
+    }
+
+    const payment = await Pembayaran.findById(id);
+    if (!payment) {
+      throw { statusCode: 404, message: "Pembayaran tidak ditemukan" };
+    }
+
+    await Pembayaran.delete(id);
+    return true;
   }
 }
 

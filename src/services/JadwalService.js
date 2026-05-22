@@ -1,4 +1,4 @@
-const { JadwalDefault, JadwalAktif } = require("../models/Jadwal");
+const { JadwalAktif } = require("../models/Jadwal");
 const config = require("../config");
 
 // Service untuk menangani logic business jadwal dan slot booking
@@ -17,14 +17,14 @@ class JadwalService {
   // Durasi slot booking dalam menit (default 60 menit)
   static SLOT_DURATION = 60;
 
-  // Ambil jadwal default untuk setiap hari
+  // Ambil jadwal default dari konfigurasi
   async getJadwalDefault() {
-    return JadwalDefault.findAll();
-  }
-
-  // Update jadwal default untuk hari tertentu (admin only)
-  async updateJadwalDefault(hari, data) {
-    return JadwalDefault.update(hari, data);
+    return Object.entries(config.businessHours).map(([hari, value]) => ({
+      hari,
+      waktu_mulai: value?.start || null,
+      waktu_selesai: value?.end || null,
+      is_active: Boolean(value?.start && value?.end),
+    }));
   }
 
   // Ambil slot yang tersedia untuk tanggal tertentu
@@ -109,19 +109,16 @@ class JadwalService {
     const dayIndex = date.getDay();
     const hari = JadwalService.HARI[dayIndex];
 
-    // Ambil jadwal default untuk hari ini
-    const jadwalDefault = await JadwalDefault.findByHari(hari);
-
-    // Jika tidak ada jadwal atau tidak aktif, return empty
-    if (!jadwalDefault || !jadwalDefault.is_active) {
-      return []; // Tidak ada jadwal untuk hari ini
+    const jadwalDefault = config.businessHours?.[hari];
+    if (!jadwalDefault || !jadwalDefault.start || !jadwalDefault.end) {
+      return [];
     }
 
     // Generate slot berdasarkan waktu mulai dan selesai
     const slots = this.generateTimeSlots(
       tanggal,
-      jadwalDefault.waktu_mulai,
-      jadwalDefault.waktu_selesai,
+      jadwalDefault.start,
+      jadwalDefault.end,
       JadwalService.SLOT_DURATION,
     );
 
@@ -203,6 +200,77 @@ class JadwalService {
 
     // Update status slot menjadi diblock
     return JadwalAktif.blockSlot(id, keterangan);
+  }
+
+  // Admin: Buat slot baru manual
+  async createSlot(data) {
+    const { tanggal, waktu_mulai, waktu_selesai, status, keterangan } = data;
+    const existing = await JadwalAktif.findBySlot(tanggal, waktu_mulai);
+
+    if (existing) {
+      throw { statusCode: 400, message: "Slot sudah ada pada waktu tersebut" };
+    }
+
+    return JadwalAktif.create({
+      tanggal,
+      waktu_mulai,
+      waktu_selesai,
+      status: status || "tersedia",
+      keterangan: keterangan || null,
+    });
+  }
+
+  // Admin: Update slot (status/keterangan)
+  async updateSlot(id, data) {
+    const slot = await JadwalAktif.findById(id);
+    if (!slot) {
+      throw { statusCode: 404, message: "Slot tidak ditemukan" };
+    }
+
+    if (slot.status === "dipesan") {
+      throw {
+        statusCode: 400,
+        message: "Slot yang sudah dipesan tidak dapat diubah",
+      };
+    }
+
+    const allowedStatus = ["tersedia", "diblock_admin", "libur"];
+    if (data.status && !allowedStatus.includes(data.status)) {
+      throw { statusCode: 400, message: "Status slot tidak valid" };
+    }
+
+    const updated = await JadwalAktif.update(id, {
+      status: data.status,
+      keterangan: data.keterangan,
+    });
+
+    if (!updated) {
+      throw { statusCode: 400, message: "Gagal memperbarui slot" };
+    }
+
+    return JadwalAktif.findById(id);
+  }
+
+  // Admin: Hapus slot
+  async deleteSlot(id) {
+    const slot = await JadwalAktif.findById(id);
+    if (!slot) {
+      throw { statusCode: 404, message: "Slot tidak ditemukan" };
+    }
+
+    if (slot.status === "dipesan") {
+      throw {
+        statusCode: 400,
+        message: "Slot yang sudah dipesan tidak dapat dihapus",
+      };
+    }
+
+    const deleted = await JadwalAktif.deleteById(id);
+    if (!deleted) {
+      throw { statusCode: 400, message: "Gagal menghapus slot" };
+    }
+
+    return true;
   }
 
   // Admin: Unblock slot yang sudah diblock

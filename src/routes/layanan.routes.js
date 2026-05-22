@@ -1,6 +1,7 @@
 const express = require("express");
 const { body, param } = require("express-validator");
 const LayananController = require("../controllers/LayananController");
+const { uploadLayananImage } = require("../middleware/upload");
 const {
   authenticate,
   optionalAuth,
@@ -48,8 +49,18 @@ router.get("/:id", LayananController.getById);
 router.use(authenticate);
 router.use(isAdmin);
 
-router.post("/", validate(createLayananValidation), LayananController.create);
-router.put("/:id", validate(updateLayananValidation), LayananController.update);
+router.post(
+  "/",
+  uploadLayananImage,
+  validate(createLayananValidation),
+  LayananController.create,
+);
+router.put(
+  "/:id",
+  uploadLayananImage,
+  validate(updateLayananValidation),
+  LayananController.update,
+);
 router.delete("/:id", LayananController.delete);
 router.post("/:id/toggle-active", LayananController.toggleActive);
 

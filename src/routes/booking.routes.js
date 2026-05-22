@@ -37,6 +37,19 @@ const ratingValidation = [
   body("review").optional().trim(),
 ];
 
+const cancelValidation = [
+  body("alasan").trim().notEmpty().withMessage("Alasan pembatalan wajib diisi"),
+];
+
+const rescheduleValidation = [
+  body("tanggal")
+    .isDate()
+    .withMessage("Format tanggal tidak valid (YYYY-MM-DD)"),
+  body("waktu")
+    .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
+    .withMessage("Format waktu tidak valid (HH:MM)"),
+];
+
 const statusUpdateValidation = [
   body("status")
     .isIn([
@@ -59,22 +72,40 @@ router.get("/ratings", BookingController.getAllRatings);
 // All routes below require authentication
 router.use(authenticate);
 
+// Admin rating routes
+router.put(
+  "/ratings/:id",
+  isAdmin,
+  validate(ratingValidation),
+  BookingController.adminUpdateRating,
+);
+router.delete("/ratings/:id", isAdmin, BookingController.adminDeleteRating);
+
 // User routes
 router.post(
   "/",
   bookingLimiter,
   validate(createBookingValidation),
-  BookingController.create
+  BookingController.create,
 );
 router.get("/me", BookingController.getMyBookings);
 router.get("/upcoming", BookingController.getUpcoming);
 router.get("/kode/:kode", BookingController.getByKode);
 router.get("/:id", BookingController.getById);
-router.post("/:id/cancel", BookingController.cancel);
+router.post(
+  "/:id/cancel",
+  validate(cancelValidation),
+  BookingController.cancel,
+);
+router.post(
+  "/:id/reschedule",
+  validate(rescheduleValidation),
+  BookingController.reschedule,
+);
 router.post(
   "/:id/rating",
   validate(ratingValidation),
-  BookingController.addRating
+  BookingController.addRating,
 );
 
 // Admin routes
@@ -84,7 +115,7 @@ router.put(
   "/:id/status",
   isAdmin,
   validate(statusUpdateValidation),
-  BookingController.updateStatus
+  BookingController.updateStatus,
 );
 router.post("/:id/confirm", isAdmin, BookingController.confirm);
 router.post("/:id/reject", isAdmin, BookingController.reject);

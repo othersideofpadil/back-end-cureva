@@ -172,6 +172,14 @@ class User {
     return rows;
   }
 
+  // Ambil semua user admin
+  static async findAdmins() {
+    const [rows] = await pool.execute(
+      "SELECT id, nama, email, role FROM users WHERE role = 'admin'",
+    );
+    return rows;
+  }
+
   // Hitung jumlah user dengan filter
   static async count(filters = {}) {
     let query = "SELECT COUNT(*) as total FROM users";

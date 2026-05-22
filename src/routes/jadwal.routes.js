@@ -1,12 +1,7 @@
 const express = require("express");
-const { body, param, query } = require("express-validator");
+const { body, param } = require("express-validator");
 const JadwalController = require("../controllers/JadwalController");
-const {
-  authenticate,
-  optionalAuth,
-  isAdmin,
-  validate,
-} = require("../middleware");
+const { authenticate, isAdmin, validate } = require("../middleware");
 
 const router = express.Router();
 
@@ -22,18 +17,28 @@ const generateSlotsValidation = [
   body("endDate").isDate().withMessage("Format tanggal selesai tidak valid"),
 ];
 
-const updateDefaultValidation = [
-  param("hari")
-    .isIn(["senin", "selasa", "rabu", "kamis", "jumat", "sabtu", "minggu"])
-    .withMessage("Hari tidak valid"),
+const createSlotValidation = [
+  body("tanggal").isDate().withMessage("Format tanggal tidak valid"),
   body("waktu_mulai")
-    .optional()
     .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
     .withMessage("Format waktu mulai tidak valid"),
   body("waktu_selesai")
-    .optional()
     .matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/)
     .withMessage("Format waktu selesai tidak valid"),
+  body("status")
+    .optional()
+    .isIn(["tersedia", "diblock_admin", "libur"])
+    .withMessage("Status slot tidak valid"),
+  body("keterangan").optional().isString(),
+];
+
+const updateSlotValidation = [
+  param("id").isInt().withMessage("ID slot tidak valid"),
+  body("status")
+    .optional()
+    .isIn(["tersedia", "diblock_admin", "libur"])
+    .withMessage("Status slot tidak valid"),
+  body("keterangan").optional().isString(),
 ];
 
 // Public routes (with optional auth)
@@ -59,15 +64,25 @@ router.get(
   validate(dateValidation),
   JadwalController.getSlotsByDate,
 );
-router.put(
-  "/default/:hari",
-  validate(updateDefaultValidation),
-  JadwalController.updateJadwalDefault,
-);
 router.post(
   "/generate",
   validate(generateSlotsValidation),
   JadwalController.generateSlots,
+);
+router.post(
+  "/slot",
+  validate(createSlotValidation),
+  JadwalController.createSlot,
+);
+router.patch(
+  "/slot/:id",
+  validate(updateSlotValidation),
+  JadwalController.updateSlot,
+);
+router.delete(
+  "/slot/:id",
+  validate(updateSlotValidation),
+  JadwalController.deleteSlot,
 );
 router.post("/slot/:id/block", JadwalController.blockSlot);
 router.post("/slot/:id/unblock", JadwalController.unblockSlot);

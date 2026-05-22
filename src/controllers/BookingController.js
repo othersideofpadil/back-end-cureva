@@ -4,6 +4,13 @@ class BookingController {
   // Buat pemesanan baru (untuk user biasa)
   create = async (req, res) => {
     try {
+      if (req.user.role === "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Admin tidak dapat membuat pemesanan seperti user.",
+        });
+      }
+
       // req.user.id didapat dari middleware authentication
       const booking = await BookingService.createBooking(req.user.id, req.body);
 
@@ -103,8 +110,13 @@ class BookingController {
   cancel = async (req, res) => {
     try {
       const { id } = req.params;
+      const { alasan } = req.body;
       // User hanya bisa membatalkan pemesanan sendiri
-      const booking = await BookingService.cancelBooking(id, req.user.id);
+      const booking = await BookingService.cancelBooking(
+        id,
+        req.user.id,
+        alasan,
+      );
 
       res.json({
         success: true,
@@ -210,6 +222,52 @@ class BookingController {
     }
   };
 
+  // Admin: update rating & review
+  adminUpdateRating = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating, review } = req.body;
+
+      const updated = await BookingService.updateRatingByAdmin(
+        id,
+        rating,
+        review,
+      );
+
+      res.json({
+        success: true,
+        message: "Rating berhasil diperbarui",
+        data: updated,
+      });
+    } catch (error) {
+      console.error("Error admin update rating:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Terjadi kesalahan saat memperbarui rating",
+      });
+    }
+  };
+
+  // Admin: hapus rating & review
+  adminDeleteRating = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      await BookingService.deleteRatingByAdmin(id);
+
+      res.json({
+        success: true,
+        message: "Rating berhasil dihapus",
+      });
+    } catch (error) {
+      console.error("Error admin delete rating:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || "Terjadi kesalahan saat menghapus rating",
+      });
+    }
+  };
+
   // Endpoint admin
   // Ambil semua pemesanan (admin only)
   getAll = async (req, res) => {
@@ -258,6 +316,16 @@ class BookingController {
         });
       }
 
+      if (
+        status === "dibatalkan_sistem" &&
+        (!resolvedAlasanPenolakan || !resolvedAlasanPenolakan.trim())
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Alasan pembatalan diperlukan",
+        });
+      }
+
       const booking = await BookingService.updateStatus(
         id,
         status,
@@ -279,6 +347,32 @@ class BookingController {
       res.status(error.statusCode || 500).json({
         success: false,
         message: error.message || "Terjadi kesalahan saat update status",
+      });
+    }
+  };
+
+  // User mengajukan penjadwalan ulang
+  reschedule = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { tanggal, waktu } = req.body;
+
+      const booking = await BookingService.rescheduleBooking(id, req.user.id, {
+        tanggal,
+        waktu,
+      });
+
+      res.json({
+        success: true,
+        message: "Permintaan jadwal ulang berhasil dikirim",
+        data: booking,
+      });
+    } catch (error) {
+      console.error("Error reschedule booking:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message:
+          error.message || "Terjadi kesalahan saat mengubah jadwal booking",
       });
     }
   };

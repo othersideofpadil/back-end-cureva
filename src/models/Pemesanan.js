@@ -312,6 +312,28 @@ class Pemesanan {
     return rows;
   }
 
+  // Admin: update rating & review
+  static async updateRating(id, rating, review) {
+    const [result] = await pool.execute(
+      `UPDATE pemesanan
+       SET rating = ?, review = ?, tanggal_review = CURRENT_TIMESTAMP
+       WHERE id = ? AND status = 'selesai'`,
+      [rating, review, id],
+    );
+    return result.affectedRows > 0;
+  }
+
+  // Admin: hapus rating & review
+  static async deleteRating(id) {
+    const [result] = await pool.execute(
+      `UPDATE pemesanan
+       SET rating = NULL, review = NULL, tanggal_review = NULL
+       WHERE id = ? AND status = 'selesai'`,
+      [id],
+    );
+    return result.affectedRows > 0;
+  }
+
   // Hapus pemesanan (admin only)
   static async delete(id) {
     const [result] = await pool.execute("DELETE FROM pemesanan WHERE id = ?", [

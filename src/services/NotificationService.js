@@ -1,4 +1,5 @@
 const Notifikasi = require("../models/Notifikasi");
+const User = require("../models/User");
 const { emitToUser } = require("../utils/socket");
 
 // Service untuk menangani logic business notifikasi
@@ -90,6 +91,27 @@ class NotificationService {
       pesan: `Pemesanan ${pemesanan.kode_booking} sedang menunggu konfirmasi.`,
       link: `/booking/${pemesanan.kode_booking}`,
     });
+  }
+
+  // Helper: Buat notifikasi untuk semua admin saat booking dibuat
+  async notifyAdminsNewBooking(pemesanan) {
+    const admins = await User.findAdmins();
+    if (!admins.length) return [];
+
+    const results = [];
+    for (const admin of admins) {
+      const notif = await this.createNotification({
+        id_user: admin.id,
+        id_pemesanan: pemesanan.id,
+        type: "pemesanan",
+        judul: "Booking Baru",
+        pesan: `Booking baru ${pemesanan.kode_booking} menunggu konfirmasi.`,
+        link: "/admin/bookings",
+      });
+      results.push(notif);
+    }
+
+    return results;
   }
 
   // Helper: Buat notifikasi saat booking dikonfirmasi

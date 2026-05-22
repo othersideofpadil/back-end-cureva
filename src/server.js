@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const http = require("http");
 const cors = require("cors");
 const config = require("./config");
@@ -20,6 +21,9 @@ app.use(
 // Parsing request
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Static files for uploaded images
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Logging sederhana
 if (config.nodeEnv === "development") {
