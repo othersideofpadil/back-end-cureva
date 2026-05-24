@@ -6,6 +6,7 @@ const {
   generateTokens,
   verifyRefreshToken,
 } = require("./auth");
+const { uploadLayananImage, uploadProfileImage } = require("./upload");
 const { validate } = require("./validate");
 const { errorHandler, notFound } = require("./errorHandler");
 const {
@@ -21,6 +22,8 @@ module.exports = {
   isVerified,
   generateTokens,
   verifyRefreshToken,
+  uploadLayananImage,
+  uploadProfileImage,
   validate,
   errorHandler,
   notFound,

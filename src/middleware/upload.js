@@ -25,12 +25,30 @@ const imageOnly = (req, file, cb) => {
   cb(null, true);
 };
 
+const profileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "../../uploads/profile"));
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `avatar-${unique}${ext}`);
+  },
+});
+
 const uploadLayananImage = multer({
   storage: layananStorage,
   fileFilter: imageOnly,
   limits: { fileSize: 2 * 1024 * 1024 },
 }).single("gambar");
 
+const uploadProfileImage = multer({
+  storage: profileStorage,
+  fileFilter: imageOnly,
+  limits: { fileSize: 2 * 1024 * 1024 },
+}).single("avatar");
+
 module.exports = {
   uploadLayananImage,
+  uploadProfileImage,
 };

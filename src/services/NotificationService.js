@@ -114,6 +114,140 @@ class NotificationService {
     return results;
   }
 
+  // Helper: Buat notifikasi status booking untuk semua admin
+  async notifyAdminsBookingStatusChanged(
+    pemesanan,
+    newStatus,
+    additionalData = {},
+  ) {
+    const admins = await User.findAdmins();
+    if (!admins.length) return [];
+
+    const adminMessages = {
+      dikonfirmasi: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi dikonfirmasi.`,
+      },
+      ditolak: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi ditolak${
+          additionalData.alasan_penolakan
+            ? ` dengan alasan: ${additionalData.alasan_penolakan}`
+            : ""
+        }.`,
+      },
+      dijadwalkan: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi dijadwalkan pada ${pemesanan.tanggal} pukul ${pemesanan.waktu}.`,
+      },
+      dalam_perjalanan: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi dalam perjalanan.`,
+      },
+      sedang_berlangsung: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi sedang berlangsung.`,
+      },
+      selesai: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi selesai.`,
+      },
+      dibatalkan_pasien: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi dibatalkan oleh pasien.`,
+      },
+      dibatalkan_sistem: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Status pemesanan ${pemesanan.kode_booking} berubah menjadi dibatalkan oleh sistem${
+          additionalData.alasan_penolakan
+            ? ` dengan alasan: ${additionalData.alasan_penolakan}`
+            : ""
+        }.`,
+      },
+    };
+
+    const message = adminMessages[newStatus];
+    if (!message) return [];
+
+    const results = [];
+    for (const admin of admins) {
+      const notif = await this.createNotification({
+        id_user: admin.id,
+        id_pemesanan: pemesanan.id,
+        type: "pemesanan",
+        ...message,
+        link: `/admin/bookings/${pemesanan.id}`,
+      });
+      results.push(notif);
+    }
+
+    return results;
+  }
+
+  // Helper: Buat notifikasi status booking untuk admin yang mengubah status
+  async notifyAdminBookingStatusChanged(
+    adminId,
+    pemesanan,
+    newStatus,
+    additionalData = {},
+  ) {
+    if (!adminId) return null;
+
+    const adminMessages = {
+      dikonfirmasi: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi dikonfirmasi.`,
+      },
+      ditolak: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi ditolak${
+          additionalData.alasan_penolakan
+            ? ` dengan alasan: ${additionalData.alasan_penolakan}`
+            : ""
+        }.`,
+      },
+      dijadwalkan: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi dijadwalkan pada ${pemesanan.tanggal} pukul ${pemesanan.waktu}.`,
+      },
+      dalam_perjalanan: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi dalam perjalanan.`,
+      },
+      sedang_berlangsung: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi sedang berlangsung.`,
+      },
+      selesai: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi selesai.`,
+      },
+      dibatalkan_pasien: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi dibatalkan oleh pasien.`,
+      },
+      dibatalkan_sistem: {
+        judul: "Status Booking Diperbarui",
+        pesan: `Anda mengubah status pemesanan ${pemesanan.kode_booking} menjadi dibatalkan oleh sistem${
+          additionalData.alasan_penolakan
+            ? ` dengan alasan: ${additionalData.alasan_penolakan}`
+            : ""
+        }.`,
+      },
+    };
+
+    const message = adminMessages[newStatus];
+    if (!message) return null;
+
+    return this.createNotification({
+      id_user: adminId,
+      id_pemesanan: pemesanan.id,
+      type: "pemesanan",
+      ...message,
+      link: `/admin/bookings/${pemesanan.id}`,
+    });
+  }
+
   // Helper: Buat notifikasi saat booking dikonfirmasi
   async notifyBookingConfirmed(userId, pemesanan) {
     return this.createNotification({

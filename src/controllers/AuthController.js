@@ -110,6 +110,34 @@ class AuthController {
     }
   };
 
+  // Kirim ulang email verifikasi
+  resendVerificationEmail = async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email diperlukan",
+        });
+      }
+
+      await AuthService.resendVerificationEmail(email);
+
+      res.json({
+        success: true,
+        message: "Email verifikasi telah dikirim ulang",
+      });
+    } catch (error) {
+      console.error("Error resend verification email:", error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message:
+          error.message || "Terjadi kesalahan saat mengirim email verifikasi",
+      });
+    }
+  };
+
   // Lupa password - request reset link
   forgotPassword = async (req, res) => {
     try {
@@ -126,10 +154,10 @@ class AuthController {
       // Kirim email reset password (jika email terdaftar)
       await AuthService.forgotPassword(email);
 
-      // Response umum untuk keamanan (tidak bocorkan apakah email terdaftar)
+      // Response sukses
       res.json({
         success: true,
-        message: "Jika email terdaftar, instruksi reset password telah dikirim",
+        message: "Instruksi reset password telah dikirim ke email Anda",
       });
     } catch (error) {
       // Tangkap error dan kirim response error
@@ -222,8 +250,9 @@ class AuthController {
   // Update profil user
   updateProfile = async (req, res) => {
     try {
-      // Update data profil
-      const profile = await AuthService.updateProfile(req.user.id, req.body);
+      const profile = await AuthService.updateProfile(req.user.id, req.body, {
+        avatarFile: req.file,
+      });
 
       res.json({
         success: true,

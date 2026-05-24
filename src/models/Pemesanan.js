@@ -66,7 +66,7 @@ class Pemesanan {
     const [rows] = await pool.execute(
       `SELECT p.*, 
               u.nama as nama_pasien, u.email as email_pasien, u.telepon as telepon_pasien,
-              l.nama as nama_layanan, l.harga as harga_layanan, l.durasi as durasi_layanan
+              l.nama as nama_layanan, l.harga as harga_layanan, l.durasi as durasi_layanan, l.gambar_url as gambar_url
        FROM pemesanan p
        JOIN users u ON p.id_pasien = u.id
        JOIN layanan l ON p.id_layanan = l.id
@@ -81,7 +81,7 @@ class Pemesanan {
     const [rows] = await pool.execute(
       `SELECT p.*, 
               u.nama as nama_pasien, u.email as email_pasien, u.telepon as telepon_pasien,
-              l.nama as nama_layanan, l.harga as harga_layanan, l.durasi as durasi_layanan
+              l.nama as nama_layanan, l.harga as harga_layanan, l.durasi as durasi_layanan, l.gambar_url as gambar_url
        FROM pemesanan p
        JOIN users u ON p.id_pasien = u.id
        JOIN layanan l ON p.id_layanan = l.id
@@ -250,6 +250,23 @@ class Pemesanan {
       ${dateCondition}
     `,
       values,
+    );
+
+    return stats[0];
+  }
+
+  // Ambil statistik pemesanan untuk pasien tertentu
+  static async getStatistikByPasien(idPasien) {
+    const [stats] = await pool.execute(
+      `
+      SELECT 
+        COUNT(*) as total_pemesanan,
+        SUM(CASE WHEN status = 'selesai' THEN 1 ELSE 0 END) as selesai,
+        AVG(CASE WHEN rating IS NOT NULL THEN rating ELSE NULL END) as rata_rating
+      FROM pemesanan
+      WHERE id_pasien = ?
+    `,
+      [idPasien],
     );
 
     return stats[0];

@@ -1,7 +1,12 @@
 const express = require("express");
 const { body, query } = require("express-validator");
 const AuthController = require("../controllers/AuthController");
-const { authenticate, authLimiter, validate } = require("../middleware");
+const {
+  authenticate,
+  authLimiter,
+  validate,
+  uploadProfileImage,
+} = require("../middleware");
 
 const router = express.Router();
 
@@ -21,6 +26,10 @@ const registerValidation = [
 const loginValidation = [
   body("email").isEmail().withMessage("Format email tidak valid"),
   body("password").notEmpty().withMessage("Password wajib diisi"),
+];
+
+const emailValidation = [
+  body("email").isEmail().withMessage("Format email tidak valid"),
 ];
 
 const changePasswordValidation = [
@@ -47,17 +56,28 @@ router.post(
   "/register",
   authLimiter,
   validate(registerValidation),
-  AuthController.register
+  AuthController.register,
 );
 router.post(
   "/login",
   authLimiter,
   validate(loginValidation),
-  AuthController.login
+  AuthController.login,
 );
 router.post("/google", authLimiter, AuthController.googleAuth);
 router.get("/verify-email", AuthController.verifyEmail);
-router.post("/forgot-password", authLimiter, AuthController.forgotPassword);
+router.post(
+  "/resend-verification",
+  authLimiter,
+  validate(emailValidation),
+  AuthController.resendVerificationEmail,
+);
+router.post(
+  "/forgot-password",
+  authLimiter,
+  validate(emailValidation),
+  AuthController.forgotPassword,
+);
 router.post("/reset-password", authLimiter, AuthController.resetPassword);
 router.post("/refresh-token", AuthController.refreshToken);
 
@@ -66,13 +86,14 @@ router.use(authenticate);
 router.get("/profile", AuthController.getProfile);
 router.put(
   "/profile",
+  uploadProfileImage,
   validate(updateProfileValidation),
-  AuthController.updateProfile
+  AuthController.updateProfile,
 );
 router.post(
   "/change-password",
   validate(changePasswordValidation),
-  AuthController.changePassword
+  AuthController.changePassword,
 );
 router.post("/logout", AuthController.logout);
 

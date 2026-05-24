@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
+const Pemesanan = require("../models/Pemesanan");
 const { generateTokens } = require("../middleware/auth");
 const config = require("../config");
 const EmailService = require("./EmailService");
@@ -57,6 +58,9 @@ class AuthService {
         email: user.email,
         role: user.role,
         is_verified: false,
+        total_booking: 0,
+        booking_selesai: 0,
+        avg_rating: null,
       },
       ...tokens,
     };
@@ -90,6 +94,8 @@ class AuthService {
     // Generate JWT tokens
     const tokens = generateTokens(user);
 
+    const stats = await Pemesanan.getStatistikByPasien(user.id);
+
     // Return data user dan tokens
     return {
       user: {
@@ -101,6 +107,9 @@ class AuthService {
         alamat: user.alamat,
         avatar_url: user.avatar_url,
         is_verified: user.is_verified,
+        total_booking: Number(stats?.total_pemesanan || 0),
+        booking_selesai: Number(stats?.selesai || 0),
+        avg_rating: stats?.rata_rating ?? null,
       },
       ...tokens,
     };
@@ -152,6 +161,8 @@ class AuthService {
     // Generate JWT tokens
     const tokens = generateTokens(user);
 
+    const stats = await Pemesanan.getStatistikByPasien(user.id);
+
     // Return data user dan tokens
     return {
       user: {
@@ -163,6 +174,9 @@ class AuthService {
         alamat: user.alamat,
         avatar_url: user.avatar_url,
         is_verified: user.is_verified,
+        total_booking: Number(stats?.total_pemesanan || 0),
+        booking_selesai: Number(stats?.selesai || 0),
+        avg_rating: stats?.rata_rating ?? null,
       },
       ...tokens,
     };
@@ -181,13 +195,49 @@ class AuthService {
     return true;
   }
 
+  // Kirim ulang email verifikasi
+  async resendVerificationEmail(email) {
+    const user = await User.findByEmail(email);
+    if (!user) {
+      throw { statusCode: 404, message: "Email tidak terdaftar" };
+    }
+
+    if (user.is_verified) {
+      throw { statusCode: 400, message: "Email sudah terverifikasi" };
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    await User.update(user.id, { verification_token: verificationToken });
+
+    const emailResult = await EmailService.sendVerificationEmail(
+      email,
+      user.nama,
+      verificationToken,
+    );
+
+    if (!emailResult?.success) {
+      throw {
+        statusCode: 500,
+        message: "Gagal mengirim email verifikasi. Coba lagi nanti.",
+      };
+    }
+
+    return true;
+  }
+
   // Lupa password - kirim email reset password
   async forgotPassword(email) {
     // Cari user berdasarkan email
     const user = await User.findByEmail(email);
     if (!user) {
-      // Jangan kasih tau apakah email terdaftar atau tidak (untuk keamanan)
-      return true;
+      throw { statusCode: 404, message: "Email tidak terdaftar" };
+    }
+
+    if (!user.is_verified) {
+      throw {
+        statusCode: 403,
+        message: "Email belum terverifikasi. Silakan verifikasi email dahulu.",
+      };
     }
 
     // Generate token reset password (32 karakter random)
@@ -198,7 +248,18 @@ class AuthService {
     await User.setResetToken(email, resetToken, expires);
 
     // Kirim email dengan link reset password
-    await EmailService.sendPasswordResetEmail(email, user.nama, resetToken);
+    const emailResult = await EmailService.sendPasswordResetEmail(
+      email,
+      user.nama,
+      resetToken,
+    );
+
+    if (!emailResult?.success) {
+      throw {
+        statusCode: 500,
+        message: "Gagal mengirim email reset password. Coba lagi nanti.",
+      };
+    }
 
     return true;
   }
@@ -257,6 +318,8 @@ class AuthService {
       throw { statusCode: 404, message: "User tidak ditemukan" };
     }
 
+    const stats = await Pemesanan.getStatistikByPasien(userId);
+
     // Return data profil (tanpa data sensitif seperti password)
     return {
       id: user.id,
@@ -268,15 +331,30 @@ class AuthService {
       avatar_url: user.avatar_url,
       is_verified: user.is_verified,
       created_at: user.created_at,
+      total_booking: Number(stats?.total_pemesanan || 0),
+      booking_selesai: Number(stats?.selesai || 0),
+      avg_rating: stats?.rata_rating ?? null,
     };
   }
 
   // Update data profil user
-  async updateProfile(userId, data) {
+  async updateProfile(userId, data, options = {}) {
     const { nama, telepon, alamat } = data;
+    const updateData = { nama, telepon, alamat };
+
+    const shouldRemoveAvatar =
+      data.remove_avatar === "1" ||
+      data.remove_avatar === "true" ||
+      data.remove_avatar === true;
+
+    if (shouldRemoveAvatar) {
+      updateData.avatar_url = null;
+    } else if (options.avatarFile) {
+      updateData.avatar_url = `/uploads/profile/${options.avatarFile.filename}`;
+    }
 
     // Update data di database
-    await User.update(userId, { nama, telepon, alamat });
+    await User.update(userId, updateData);
 
     // Return profil terbaru
     return this.getProfile(userId);

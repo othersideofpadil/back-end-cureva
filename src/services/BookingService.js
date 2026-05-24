@@ -201,7 +201,7 @@ class BookingService {
     await Pemesanan.updateStatus(id, status, additionalData);
 
     // Handle side effects: notifikasi, email, release slot, dll
-    await this.handleStatusChange(booking, status, additionalData);
+    await this.handleStatusChange(booking, status, additionalData, adminId);
 
     return Pemesanan.findById(id);
   }
@@ -249,7 +249,7 @@ class BookingService {
   }
 
   // Handle side effects saat status berubah (kirim notif, email, release slot)
-  async handleStatusChange(booking, newStatus, additionalData) {
+  async handleStatusChange(booking, newStatus, additionalData, adminId = null) {
     // Mapping pesan notifikasi untuk setiap perubahan status
     const notifMessages = {
       dikonfirmasi: {
@@ -308,6 +308,13 @@ class BookingService {
         link: `/booking/${booking.kode_booking}`,
       });
     }
+
+    // Kirim notifikasi perubahan status ke semua admin
+    await NotificationService.notifyAdminsBookingStatusChanged(
+      booking,
+      newStatus,
+      additionalData,
+    );
 
     // Release slot jika booking dibatalkan/ditolak
     if (

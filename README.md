@@ -1,6 +1,17 @@
 # Cureva Fisioterapi Backend API
 
-Backend API untuk sistem pemesanan layanan homecare fisioterapi Cureva.
+Backend API untuk sistem pemesanan layanan homecare fisioterapi Cureva. API ini menangani autentikasi pengguna, manajemen booking, jadwal, pembayaran, notifikasi real-time, dan laporan operasional untuk admin.
+
+## 🧭 Gambaran Aplikasi
+
+Cureva adalah platform homecare fisioterapi yang menghubungkan pasien dengan admin/fisioterapis melalui alur booking terstruktur. Backend bertugas sebagai pusat logika bisnis: validasi booking, perpindahan status pemesanan, pengiriman notifikasi ke pasien dan admin, sinkronisasi jadwal slot, serta pencatatan pembayaran dan rating.
+
+Karakter utama backend saat ini:
+
+- Booking dibuat pasien melalui slot waktu yang divalidasi.
+- Admin mengelola status pemesanan dan melihat statistik operasional.
+- Notifikasi tersimpan di database, muncul di aplikasi, dan diperbarui secara real-time.
+- Data pembayaran dan jadwal dipakai untuk menjaga konsistensi status booking.
 
 ## 🚀 Tech Stack
 
@@ -127,6 +138,8 @@ Server akan berjalan di `http://localhost:3000`
 
 ## 📡 API Endpoints
 
+API dirancang dengan pola resource yang konsisten agar mudah dipakai frontend. Endpoint utama berfokus pada booking, jadwal, pembayaran, notifikasi, dan dashboard admin.
+
 Base URL: `/api`
 
 ### Authentication (`/api/auth`)
@@ -214,17 +227,13 @@ Base URL: `/api`
 
 ### Admin (`/api/admin`)
 
-| Method | Endpoint               | Auth  | Description              |
-| ------ | ---------------------- | ----- | ------------------------ |
-| GET    | `/dashboard`           | Admin | Dashboard statistik      |
-| GET    | `/users`               | Admin | List users               |
-| GET    | `/users/:id`           | Admin | Detail user              |
-| PUT    | `/users/:id`           | Admin | Update user              |
-| DELETE | `/users/:id`           | Admin | Hapus user               |
-| GET    | `/settings`            | Admin | Daftar settings          |
-| GET    | `/settings/categories` | Admin | Kategori settings        |
-| PUT    | `/settings`            | Admin | Update multiple settings |
-| PUT    | `/settings/:key`       | Admin | Update single setting    |
+| Method | Endpoint     | Auth  | Description         |
+| ------ | ------------ | ----- | ------------------- |
+| GET    | `/dashboard` | Admin | Dashboard statistik |
+| GET    | `/users`     | Admin | List users          |
+| GET    | `/users/:id` | Admin | Detail user         |
+| PUT    | `/users/:id` | Admin | Update user         |
+| DELETE | `/users/:id` | Admin | Hapus user          |
 
 ## 🔐 Authentication
 
@@ -238,6 +247,14 @@ Authorization: Bearer <your_access_token>
 
 - **pasien** - User biasa yang dapat membuat booking
 - **admin** - Administrator dengan akses penuh
+
+## 🧩 Alur Fitur Utama
+
+- Pasien membuat booking berdasarkan layanan, tanggal, waktu, dan alamat.
+- Sistem memvalidasi ketersediaan slot dan membuat data pembayaran otomatis.
+- Admin memproses booking dengan status bertahap: konfirmasi, jadwalkan, perjalanan, selesai, atau tolak.
+- Setiap perubahan status memicu notifikasi ke pasien dan tercatat sebagai aktivitas admin.
+- Pengingat sesi, pembayaran diterima, dan rating juga disimpan sebagai notifikasi in-app.
 
 ## 💳 Metode Pembayaran
 
