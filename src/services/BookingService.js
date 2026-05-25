@@ -278,7 +278,11 @@ class BookingService {
       },
       selesai: {
         judul: "Sesi Selesai",
-        pesan: `Terima kasih! Sesi fisioterapi ${booking.kode_booking} telah selesai. Jangan lupa berikan rating Anda.`,
+        pesan: `Terima kasih! Sesi fisioterapi ${booking.kode_booking} telah selesai.${
+          additionalData.catatan_admin
+            ? ` Catatan fisioterapis: ${additionalData.catatan_admin}`
+            : ""
+        } Jangan lupa berikan rating Anda.`,
       },
       dibatalkan_pasien: {
         judul: "Pemesanan Dibatalkan",

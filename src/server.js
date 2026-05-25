@@ -6,6 +6,7 @@ const config = require("./config");
 const routes = require("./routes");
 const { errorHandler, notFound } = require("./middleware");
 const { testConnection } = require("./config/database");
+const ReminderService = require("./services/ReminderService");
 const { initSocket } = require("./utils/socket");
 
 const app = express();
@@ -70,6 +71,7 @@ const startServer = async () => {
     // Jalankan server HTTP + Express
     const httpServer = http.createServer(app);
     initSocket(httpServer);
+    ReminderService.start();
 
     const server = httpServer.listen(PORT, () => {
       console.log(`Port: ${PORT}`);

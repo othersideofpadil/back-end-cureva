@@ -326,6 +326,13 @@ class BookingController {
         });
       }
 
+      if (status === "selesai" && (!catatan_admin || !catatan_admin.trim())) {
+        return res.status(400).json({
+          success: false,
+          message: "Catatan progres diperlukan untuk status selesai",
+        });
+      }
+
       const booking = await BookingService.updateStatus(
         id,
         status,
@@ -469,11 +476,19 @@ class BookingController {
   complete = async (req, res) => {
     try {
       const { id } = req.params;
+      const { catatan_admin } = req.body;
+
+      if (!catatan_admin || !catatan_admin.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Catatan progres diperlukan untuk status selesai",
+        });
+      }
 
       const booking = await BookingService.updateStatus(
         id,
         "selesai",
-        {}, // Tidak perlu additional data
+        { catatan_admin },
         req.user.id,
       );
 

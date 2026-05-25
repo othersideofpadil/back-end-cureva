@@ -35,6 +35,72 @@ class EmailService {
     }
   }
 
+  // ─── Pengingat H-1 (ke Pasien) ────────────────────────────────────
+  static async sendReminderH1ToPasien(booking, pasien) {
+    const tanggal = new Date(booking.tanggal).toLocaleDateString("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    await this.send({
+      to: pasien.email,
+      subject: `⏰ Pengingat: Sesi Besok - ${booking.kode_booking}`,
+      html: this.baseTemplate(`
+        <h2>⏰ Pengingat Sesi Besok!</h2>
+        <p>Halo, <strong>${pasien.nama}</strong>! Ini adalah pengingat bahwa Anda memiliki sesi fisioterapi <strong>besok</strong>.</p>
+        <div class="info-box">
+          <div class="info-row"><span class="info-label">Kode Booking</span><span>${booking.kode_booking}</span></div>
+          <div class="info-row"><span class="info-label">Layanan</span><span>${booking.nama_layanan || "-"}</span></div>
+          <div class="info-row"><span class="info-label">Tanggal</span><span>${tanggal}</span></div>
+          <div class="info-row"><span class="info-label">Waktu</span><span>${booking.waktu}</span></div>
+          <div class="info-row"><span class="info-label">Alamat</span><span>${booking.alamat}</span></div>
+        </div>
+        <p>💡 <strong>Tips persiapan:</strong></p>
+        <ul>
+          <li>Pastikan Anda berada di lokasi tepat waktu</li>
+          <li>Kenakan pakaian yang nyaman</li>
+          <li>Siapkan area yang cukup untuk sesi fisioterapi</li>
+          <li>Informasikan kondisi terbaru kepada fisioterapis</li>
+        </ul>
+        <div style="text-align:center">
+          <a href="${process.env.FRONTEND_URL}/booking/${booking.kode_booking}" class="btn">📋 Lihat Detail Pemesanan</a>
+        </div>
+      `),
+    });
+  }
+
+  // ─── Pengingat H-1 (ke Admin/Fisioterapis) ────────────────────────
+  static async sendReminderH1ToAdmin(booking, pasien) {
+    const tanggal = new Date(booking.tanggal).toLocaleDateString("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    await this.send({
+      to: process.env.ADMIN_EMAIL,
+      subject: `⏰ Pengingat Jadwal Besok - ${booking.kode_booking}`,
+      html: this.baseTemplate(`
+        <h2>⏰ Pengingat Jadwal Kunjungan Besok</h2>
+        <p>Anda memiliki jadwal kunjungan homecare <strong>besok</strong>. Pastikan persiapan sudah lengkap.</p>
+        <div class="info-box">
+          <div class="info-row"><span class="info-label">Kode Booking</span><span>${booking.kode_booking}</span></div>
+          <div class="info-row"><span class="info-label">Pasien</span><span>${pasien.nama}</span></div>
+          <div class="info-row"><span class="info-label">Telepon</span><span>${pasien.telepon || "-"}</span></div>
+          <div class="info-row"><span class="info-label">Layanan</span><span>${booking.nama_layanan || "-"}</span></div>
+          <div class="info-row"><span class="info-label">Tanggal</span><span>${tanggal}</span></div>
+          <div class="info-row"><span class="info-label">Waktu</span><span>${booking.waktu}</span></div>
+          <div class="info-row"><span class="info-label">Alamat</span><span>${booking.alamat}</span></div>
+          <div class="info-row"><span class="info-label">Keluhan</span><span>${booking.keluhan}</span></div>
+        </div>
+        <div style="text-align:center">
+          <a href="${process.env.FRONTEND_URL}/admin/bookings/${booking.id}" class="btn">📋 Lihat Detail di Dashboard</a>
+        </div>
+      `),
+    });
+  }
+
   // Kirim email notifikasi ke admin saat ada booking baru
   async sendNewBookingNotification(booking, layanan) {
     const subject = `[Cureva] Pemesanan Baru: ${booking.kode_booking}`;
