@@ -160,15 +160,15 @@ class EmailService {
             <h3>👤 Data Pasien</h3>
             <div class="info-row">
               <span class="info-label">Nama</span>
-              <span class="info-value">${booking.pasien_nama}</span>
+              <span class="info-value">${booking.nama_pasien}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Email</span>
-              <span class="info-value">${booking.pasien_email}</span>
+              <span class="info-value">${booking.email_pasien || "-"}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Telepon</span>
-              <span class="info-value">${booking.pasien_telepon || "-"}</span>
+              <span class="info-value">${booking.telepon_pasien || "-"}</span>
             </div>
 
             <h3>📍 Lokasi</h3>
@@ -285,7 +285,7 @@ class EmailService {
           </div>
           
           <div class="content">
-            <p>Halo ${booking.pasien_nama},</p>
+            <p>Halo ${booking.nama_pasien},</p>
             
             <div class="highlight">
               <p>${info.message}</p>
@@ -336,7 +336,6 @@ class EmailService {
   }
 
   // Kirim email verifikasi saat user register
-
   async sendVerificationEmail(email, nama, token) {
     const verifyUrl = `${config.frontendUrl}/verify-email?token=${token}`;
     const subject = "[Cureva] Verifikasi Email Anda";
@@ -386,7 +385,6 @@ class EmailService {
   }
 
   // Kirim email untuk reset password
-
   async sendPasswordResetEmail(email, nama, token) {
     const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
     const subject = "[Cureva] Reset Password";
