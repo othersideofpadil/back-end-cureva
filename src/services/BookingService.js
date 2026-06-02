@@ -2,6 +2,7 @@ const Pemesanan = require("../models/Pemesanan");
 const Pembayaran = require("../models/Pembayaran");
 const Layanan = require("../models/Layanan");
 const { JadwalAktif } = require("../models/Jadwal");
+const { pool } = require("../config/database");
 const NotificationService = require("./NotificationService");
 const EmailService = require("./EmailService");
 const JadwalService = require("./JadwalService");
@@ -59,40 +60,70 @@ class BookingService {
       throw { statusCode: 400, message: "Slot waktu tidak tersedia" };
     }
 
-    // Buat data pemesanan di database
-    const pemesanan = await Pemesanan.create({
-      id_pasien: userId,
-      id_layanan,
-      tanggal,
-      waktu,
-      alamat,
-      koordinat,
-      keluhan,
-      catatan_tambahan,
-      metode_pembayaran,
-      status: BookingService.STATUS.MENUNGGU_KONFIRMASI,
-    });
+    //Bungkus dalam transaksi agar tidak race condition pada slot yang sama
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    let pemesanan;
+    try {
+      // Re-cek slot di dalam transaksi (FOR UPDATE mengunci baris)
+      const [slotRows] = await conn.execute(
+        "SELECT * FROM jadwal_aktif WHERE tanggal = ? AND waktu_mulai = ? AND status = 'tersedia' FOR UPDATE",
+        [tanggal, waktu],
+      );
+      if (slotRows.length === 0) {
+        throw { statusCode: 400, message: "Slot waktu sudah tidak tersedia" };
+      }
 
-    // Auto-create record pembayaran dengan status menunggu
-    await Pembayaran.create({
-      id_pemesanan: pemesanan.id,
-      metode: metode_pembayaran,
-      status: "menunggu",
-      jumlah: layanan.harga,
-    });
+      // Buat pemesanan
+      pemesanan = await Pemesanan.create(
+        {
+          id_pasien: userId,
+          id_layanan,
+          tanggal,
+          waktu,
+          alamat,
+          koordinat,
+          keluhan,
+          catatan_tambahan,
+          metode_pembayaran,
+          status: BookingService.STATUS.MENUNGGU_KONFIRMASI,
+        },
+        conn,
+      );
 
-    // Tandai slot sebagai sudah dipesan
-    await JadwalAktif.bookSlot(tanggal, waktu, pemesanan.id);
+      // Buat pembayaran
+      await Pembayaran.create(
+        {
+          id_pemesanan: pemesanan.id,
+          metode: metode_pembayaran,
+          status: "menunggu",
+          jumlah: layanan.harga,
+        },
+        conn,
+      );
+
+      // Kunci slot
+      await JadwalAktif.bookSlot(tanggal, waktu, pemesanan.id, conn);
+
+      await conn.commit();
+    } catch (err) {
+      await conn.rollback();
+      throw err; // lempar ulang agar controller tangkap
+    } finally {
+      conn.release();
+    }
 
     // Kirim notifikasi ke user
-    await NotificationService.createNotification({
+    await NotificationService.createNotificationDelayed({
       id_user: userId,
       id_pemesanan: pemesanan.id,
       type: "pemesanan",
       judul: "Pemesanan Berhasil Dibuat",
       pesan: `Pemesanan ${pemesanan.kode_booking} sedang menunggu konfirmasi.`,
       link: `/booking/${pemesanan.kode_booking}`,
-    });
+    },
+      600,
+  );
 
     // Kirim notifikasi ke admin (in-app)
     await NotificationService.notifyAdminsNewBooking(pemesanan);

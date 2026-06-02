@@ -13,6 +13,18 @@ class NotificationService {
     return notification;
   }
 
+  async createNotificationDelayed(data, delayMs = 600) {
+    // Simpan ke DB sekarang (tidak perlu ditunda)
+    const notification = await Notifikasi.create(data);
+
+    // Emit socket setelah delay agar HTTP response sempat tiba lebih dulu
+    setTimeout(() => {
+      emitToUser(data.id_user, "notification:new", notification);
+    }, delayMs);
+
+    return notification;
+  }
+
   // Ambil semua notifikasi milik user dengan filter
   async getNotifications(userId, filters = {}) {
     return Notifikasi.findByUser(userId, filters);
@@ -90,7 +102,9 @@ class NotificationService {
       judul: "Pemesanan Berhasil Dibuat",
       pesan: `Pemesanan ${pemesanan.kode_booking} sedang menunggu konfirmasi.`,
       link: `/booking/${pemesanan.kode_booking}`,
-    });
+    },
+      600,
+    );
   }
 
   // Helper: Buat notifikasi untuk semua admin saat booking dibuat
@@ -107,7 +121,9 @@ class NotificationService {
         judul: "Booking Baru",
         pesan: `Booking baru ${pemesanan.kode_booking} menunggu konfirmasi.`,
         link: "/admin/bookings",
-      });
+      },
+        600,
+      );
       results.push(notif);
     }
 

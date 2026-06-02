@@ -1,31 +1,24 @@
-/**
- * Global Error Handler Middleware
- * Menangani semua error yang terjadi di aplikasi
- * Dipanggil terakhir di chain middleware
- */
+const AppError = require("../utils/AppError");
+
 const errorHandler = (err, req, res, next) => {
-  // Log error untuk debugging
   console.error("ERROR:", err);
 
-  // Ambil status code dari error, default 500 jika tidak ada
+  // Tangani AppError (statusCode eksplisit) dan plain-object lama
   const statusCode = err.statusCode || 500;
-
-  // Ambil pesan error, default pesan generic jika tidak ada
   const message = err.message || "Terjadi kesalahan pada server";
 
-  // Kirim response error
+  // Jangan ekspos detail error internal ke production
+  const isDev = process.env.NODE_ENV === "development";
+  const isAppError = err instanceof AppError;
+
   res.status(statusCode).json({
     success: false,
-    message: message,
-    // Tambahkan detail error hanya di development untuk debugging
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+    message,
+    // Stack trace hanya di dev, dan hanya untuk error tak terduga
+    ...(isDev && !isAppError && { stack: err.stack }),
   });
 };
 
-/**
- * 404 Not Found Handler
- * Menangani request ke endpoint yang tidak ada
- */
 const notFound = (req, res) => {
   res.status(404).json({
     success: false,
@@ -33,7 +26,4 @@ const notFound = (req, res) => {
   });
 };
 
-module.exports = {
-  errorHandler,
-  notFound,
-};
+module.exports = { errorHandler, notFound };

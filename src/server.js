@@ -11,12 +11,27 @@ const { initSocket } = require("./utils/socket");
 
 const app = express();
 
+const helmet = require("helmet");
+app.use(helmet());
+
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  config.frontendUrl,
+].filter(Boolean);
+
 // CORS sederhana - izinkan semua di development
 app.use(
   cors({
-    origin: config.nodeEnv === "development" ? true : config.frontendUrl,
-    credentials: true,
-  }),
+   origin: (origin, callback) => {
+      // Izinkan request tanpa origin (mobile app, curl, Postman)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} tidak diizinkan`));
+      }
+    }, credentials: true,
+  })
 );
 
 // Parsing request

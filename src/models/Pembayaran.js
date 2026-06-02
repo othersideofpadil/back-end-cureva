@@ -3,7 +3,7 @@ const { pool } = require("../config/database");
 // Model untuk tabel pembayaran - menangani operasi database payment
 class Pembayaran {
   // Buat record pembayaran baru (auto-created saat booking)
-  static async create(data) {
+  static async create(data, conn = pool) {
     const {
       id_pemesanan,
       metode = "cash_on_visit",
@@ -12,7 +12,7 @@ class Pembayaran {
       catatan = null,
     } = data;
 
-    const [result] = await pool.execute(
+    const [result] = await conn.execute(
       `INSERT INTO pembayaran (id_pemesanan, metode, status, jumlah, catatan)
        VALUES (?, ?, ?, ?, ?)`,
       [id_pemesanan, metode, status, jumlah, catatan],

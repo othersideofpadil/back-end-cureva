@@ -125,8 +125,8 @@ class JadwalAktif {
   }
 
   // Tandai slot sebagai dipesan (saat booking dibuat)
-  static async bookSlot(tanggal, waktuMulai, idPemesanan) {
-    const [result] = await pool.execute(
+  static async bookSlot(tanggal, waktuMulai, idPemesanan, conn = pool) {
+    const [result] = await conn.execute(
       `UPDATE jadwal_aktif SET status = 'dipesan', id_pemesanan = ? 
        WHERE tanggal = ? AND waktu_mulai = ? AND status = 'tersedia'`,
       [idPemesanan, tanggal, waktuMulai],

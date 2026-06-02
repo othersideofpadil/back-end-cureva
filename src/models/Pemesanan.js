@@ -3,11 +3,11 @@ const { pool } = require("../config/database");
 // Model untuk tabel pemesanan - menangani operasi database booking
 class Pemesanan {
   // Generate kode booking unik: CVA-YYYYMMDD-XXX (contoh: CVA-20260211-001)
-  static async generateKodeBooking(tanggal) {
+  static async generateKodeBooking(tanggal, conn = pool) {
     const dateStr = tanggal.replace(/-/g, "");
     const prefix = `CVA-${dateStr}`;
 
-    const [rows] = await pool.execute(
+    const [rows] = await conn.execute(
       "SELECT kode_booking FROM pemesanan WHERE kode_booking LIKE ? ORDER BY kode_booking DESC LIMIT 1",
       [`${prefix}-%`],
     );
@@ -23,7 +23,7 @@ class Pemesanan {
   }
 
   // Buat pemesanan baru
-  static async create(data) {
+  static async create(data, conn = pool) {
     const {
       id_pasien,
       id_layanan,
@@ -37,9 +37,9 @@ class Pemesanan {
       status = "menunggu_konfirmasi",
     } = data;
 
-    const kode_booking = await this.generateKodeBooking(tanggal);
+    const kode_booking = await this.generateKodeBooking(tanggal, conn);
 
-    const [result] = await pool.execute(
+    const [result] = await conn.execute(
       `INSERT INTO pemesanan 
        (kode_booking, id_pasien, id_layanan, tanggal, waktu, alamat, koordinat, keluhan, catatan_tambahan, metode_pembayaran, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

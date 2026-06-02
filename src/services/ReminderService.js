@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const db = require("../config/database");
+const { pool } = require("../config/database");
 const EmailService = require("./EmailService");
 
 /**
@@ -39,7 +39,7 @@ class ReminderService {
   static async sendH1Reminders() {
     try {
       // Ambil semua booking yang jadwalnya BESOK dan statusnya aktif
-      const [bookings] = await db.query(`
+      const [bookings] = await pool.query(`
         SELECT
           p.*,
           l.nama   AS layanan_nama,
@@ -83,7 +83,7 @@ class ReminderService {
   static async autoCancelExpiredBookings() {
     try {
       // Cari booking menunggu konfirmasi yang sudah > 24 jam
-      const [bookings] = await db.query(`
+      const [bookings] = await pool.query(`
         SELECT p.*, u.nama AS pasien_nama, u.email AS pasien_email
         FROM pemesanan p
         JOIN users u ON u.id = p.id_pasien
@@ -94,7 +94,7 @@ class ReminderService {
       for (const booking of bookings) {
         try {
           // Update status jadi dibatalkan_sistem
-          await db.query(
+          await pool.execute(
             `UPDATE pemesanan
              SET status = 'dibatalkan_sistem', updated_at = NOW()
              WHERE id = ?`,
@@ -102,7 +102,7 @@ class ReminderService {
           );
 
           // Bebaskan slot jadwal
-          await db.query(
+          await pool.execute(
             `UPDATE jadwal_aktif
              SET status = 'tersedia', id_pemesanan = NULL
              WHERE id_pemesanan = ?`,
@@ -110,7 +110,7 @@ class ReminderService {
           );
 
           // Simpan notifikasi in-app
-          await db.query(
+          await pool.execute(
             `INSERT INTO notifikasi
                (id_user, id_pemesanan, type, judul, pesan, link)
              VALUES (?, ?, 'pemesanan',
