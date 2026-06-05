@@ -15,8 +15,8 @@ const registerValidation = [
   body("nama").trim().notEmpty().withMessage("Nama wajib diisi"),
   body("email").isEmail().withMessage("Format email tidak valid"),
   body("password")
-    .isLength({ min: 6 })
-    .withMessage("Password minimal 6 karakter"),
+    .isLength({ min: 8 })
+    .withMessage("Password minimal 8 karakter"),
   body("telepon")
     .optional()
     .isMobilePhone("id-ID")
@@ -35,8 +35,8 @@ const emailValidation = [
 const changePasswordValidation = [
   body("currentPassword").notEmpty().withMessage("Password lama wajib diisi"),
   body("newPassword")
-    .isLength({ min: 6 })
-    .withMessage("Password baru minimal 6 karakter"),
+    .isLength({ min: 8 })
+    .withMessage("Password baru minimal 8 karakter"),
 ];
 
 const updateProfileValidation = [

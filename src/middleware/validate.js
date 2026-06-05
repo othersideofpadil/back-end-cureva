@@ -25,8 +25,8 @@ const validate = (validations) => {
       message: err.msg, // Pesan error dari validator
     }));
 
-    // Kirim response error 400 (Bad Request) dengan detail error
-    return res.status(400).json({
+    // Kirim response error 422 unprocessable entity dengan detail error
+    return res.status(422).json({
       success: false,
       message: "Validasi gagal",
       errors: extractedErrors, // Array error yang detail

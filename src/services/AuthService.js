@@ -18,6 +18,43 @@ class AuthService {
   async register(userData) {
     const { nama, email, password, telepon, alamat } = userData;
 
+    // Validasi field wajib
+    if (!nama?.trim()) {
+      throw {
+        statusCode: 422,
+        message: "Nama wajib diisi",
+      };
+    }
+
+    if (!email?.trim()) {
+      throw {
+        statusCode: 422,
+        message: "Email wajib diisi",
+      };
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw {
+        statusCode: 422,
+        message: "Format email tidak valid",
+      };
+    }
+
+    if (!password) {
+      throw {
+        statusCode: 422,
+        message: "Password wajib diisi",
+      };
+    }
+
+    if (password.length < 8) {
+      throw {
+        statusCode: 422,
+        message: "Password minimal 8 karakter",
+      };
+    }
+
     // Cek apakah email sudah terdaftar
     const existingUser = await User.findByEmail(email);
     if (existingUser) {
