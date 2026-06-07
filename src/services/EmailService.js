@@ -101,6 +101,144 @@ class EmailService {
     });
   }
 
+  // Kirim email notifikasi perubahan status ke pasien (semua status)
+  async sendBookingStatusEmail(booking, newStatus, additionalData = {}) {
+    const statusConfig = {
+      dikonfirmasi: {
+        subject: `✅ Pemesanan Dikonfirmasi - ${booking.kode_booking}`,
+        icon: "✅",
+        title: "Pemesanan Dikonfirmasi!",
+        color: "#10b981",
+        pesan: `Pemesanan Anda telah dikonfirmasi. Fisioterapis akan datang sesuai jadwal.`,
+      },
+      ditolak: {
+        subject: `❌ Pemesanan Ditolak - ${booking.kode_booking}`,
+        icon: "❌",
+        title: "Pemesanan Ditolak",
+        color: "#ef4444",
+        pesan: `Maaf, pemesanan Anda tidak dapat diproses.${additionalData.alasan_penolakan ? ` Alasan: ${additionalData.alasan_penolakan}` : ""}`,
+      },
+      dijadwalkan: {
+        subject: `📅 Pemesanan Dijadwalkan - ${booking.kode_booking}`,
+        icon: "📅",
+        title: "Pemesanan Dijadwalkan",
+        color: "#3b82f6",
+        pesan: `Pemesanan Anda telah dijadwalkan untuk tanggal ${new Date(booking.tanggal).toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} pukul ${booking.waktu}.`,
+      },
+      dalam_perjalanan: {
+        subject: `🚗 Fisioterapis Dalam Perjalanan - ${booking.kode_booking}`,
+        icon: "🚗",
+        title: "Fisioterapis Dalam Perjalanan!",
+        color: "#f59e0b",
+        pesan: `Fisioterapis sedang dalam perjalanan menuju lokasi Anda. Harap bersiap untuk menyambut kedatangannya.`,
+      },
+      sedang_berlangsung: {
+        subject: `🏃 Sesi Dimulai - ${booking.kode_booking}`,
+        icon: "🏃",
+        title: "Sesi Fisioterapi Dimulai",
+        color: "#8b5cf6",
+        pesan: `Sesi fisioterapi Anda sedang berlangsung. Semoga sesi berjalan lancar!`,
+      },
+      selesai: {
+        subject: `🎉 Sesi Selesai - ${booking.kode_booking}`,
+        icon: "🎉",
+        title: "Sesi Fisioterapi Selesai!",
+        color: "#10b981",
+        pesan: `Terima kasih! Sesi fisioterapi Anda telah selesai.${additionalData.catatan_admin ? ` Catatan fisioterapis: ${additionalData.catatan_admin}` : ""} Jangan lupa berikan rating Anda.`,
+      },
+      dibatalkan_pasien: {
+        subject: `❎ Pemesanan Dibatalkan - ${booking.kode_booking}`,
+        icon: "❎",
+        title: "Pemesanan Dibatalkan",
+        color: "#6b7280",
+        pesan: `Pemesanan Anda telah dibatalkan.${additionalData.alasan_penolakan ? ` Alasan: ${additionalData.alasan_penolakan}` : ""}`,
+      },
+      dibatalkan_sistem: {
+        subject: `❎ Pemesanan Dibatalkan Sistem - ${booking.kode_booking}`,
+        icon: "❎",
+        title: "Pemesanan Dibatalkan oleh Sistem",
+        color: "#6b7280",
+        pesan: `Pemesanan Anda dibatalkan oleh sistem.${additionalData.alasan_penolakan ? ` Alasan: ${additionalData.alasan_penolakan}` : " Kemungkinan karena tidak ada konfirmasi dalam 24 jam."}`,
+      },
+    };
+
+    const cfg = statusConfig[newStatus];
+    if (!cfg) return;
+
+    const tanggal = new Date(booking.tanggal).toLocaleDateString("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: ${cfg.color}; color: white; padding: 25px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }
+        .content { background: #f9fafb; padding: 25px; border: 1px solid #e5e7eb; }
+        .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 8px 8px; }
+        .highlight { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid ${cfg.color}; }
+        .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .info-label { font-weight: bold; width: 140px; color: #6b7280; font-size: 14px; }
+        .info-value { flex: 1; font-size: 14px; }
+        .btn { display: inline-block; padding: 12px 25px; background: ${cfg.color}; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 15px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>${cfg.icon} ${cfg.title}</h1>
+          <p>Kode Booking: ${booking.kode_booking}</p>
+        </div>
+        <div class="content">
+          <p>Halo, <strong>${booking.nama_pasien || booking.pasien_nama || ""}</strong>!</p>
+          <div class="highlight">
+            <p style="margin:0">${cfg.pesan}</p>
+          </div>
+          <h3 style="margin-bottom:10px">Detail Pemesanan</h3>
+          <div class="info-row">
+            <span class="info-label">Layanan</span>
+            <span class="info-value">${booking.nama_layanan || "-"}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Tanggal</span>
+            <span class="info-value">${tanggal}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Waktu</span>
+            <span class="info-value">${booking.waktu}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Alamat</span>
+            <span class="info-value">${booking.alamat}</span>
+          </div>
+          <div style="text-align:center">
+            <a href="${process.env.FRONTEND_URL}/booking/${booking.kode_booking}" class="btn">Lihat Detail Pemesanan</a>
+          </div>
+        </div>
+        <div class="footer">
+          <p>Cureva Fisioterapi Home Visit</p>
+          <p>Email ini dikirim otomatis. Jangan membalas email ini.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    return this.sendMail(
+      booking.pasien_email || booking.email_pasien,
+      cfg.subject,
+      html,
+    );
+  }
+
   // Kirim email notifikasi ke admin saat ada booking baru
   async sendNewBookingNotification(booking, layanan) {
     const subject = `[Cureva] Pemesanan Baru: ${booking.kode_booking}`;
@@ -301,7 +439,7 @@ class EmailService {
               day: "numeric",
             })}</p>
             <p><strong>Waktu:</strong> ${booking.waktu}</p>
-            <p><strong>Layanan:</strong> ${booking.layanan_nama}</p>
+            <p><strong>Layanan:</strong> ${booking.nama_layanan}</p>
             
             ${
               status === "dikonfirmasi"
@@ -431,6 +569,100 @@ class EmailService {
 
     // Kirim email reset password ke user
     return this.sendMail(email, subject, html);
+  }
+
+  // Kirim email ke pasien saat booking berhasil dibuat
+  async sendBookingCreatedEmail(booking, layanan) {
+    const tanggal = new Date(booking.tanggal).toLocaleDateString("id-ID", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #4F46E5; color: white; padding: 25px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }
+        .content { background: #f9fafb; padding: 25px; border: 1px solid #e5e7eb; }
+        .footer { background: #1f2937; color: #9ca3af; padding: 15px; text-align: center; font-size: 12px; border-radius: 0 0 8px 8px; }
+        .highlight { background: white; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4F46E5; }
+        .info-row { display: flex; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .info-label { font-weight: bold; width: 140px; color: #6b7280; font-size: 14px; }
+        .info-value { flex: 1; font-size: 14px; }
+        .btn { display: inline-block; padding: 12px 25px; background: #4F46E5; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 15px; }
+        .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; background: #fef3c7; color: #92400e; font-weight: bold; font-size: 13px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📋 Pemesanan Berhasil Dibuat!</h1>
+          <p>Kode Booking: ${booking.kode_booking}</p>
+        </div>
+        <div class="content">
+          <p>Halo, <strong>${booking.nama_pasien || booking.pasien_nama || ""}</strong>!</p>
+          <div class="highlight">
+            <p style="margin:0">Pemesanan Anda telah berhasil dibuat dan sedang menunggu konfirmasi dari fisioterapis. Kami akan segera menghubungi Anda.</p>
+          </div>
+
+          <h3 style="margin-bottom:10px">Detail Pemesanan</h3>
+          <div class="info-row">
+            <span class="info-label">Layanan</span>
+            <span class="info-value">${layanan?.nama || booking.layanan_nama || "-"}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Tanggal</span>
+            <span class="info-value">${tanggal}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Waktu</span>
+            <span class="info-value">${booking.waktu}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Alamat</span>
+            <span class="info-value">${booking.alamat}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Keluhan</span>
+            <span class="info-value">${booking.keluhan}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Pembayaran</span>
+            <span class="info-value">${booking.metode_pembayaran === "cash_on_visit" ? "Cash On Visit" : "Transfer On Visit"}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Harga</span>
+            <span class="info-value">Rp ${Number(layanan?.harga || 0).toLocaleString("id-ID")}</span>
+          </div>
+
+          <div style="text-align:center; margin-top:20px">
+            <span class="status-badge">⏳ Menunggu Konfirmasi</span>
+          </div>
+          <div style="text-align:center">
+            <a href="${process.env.FRONTEND_URL}/booking/${booking.kode_booking}" class="btn">Lihat Detail Pemesanan</a>
+          </div>
+        </div>
+        <div class="footer">
+          <p>Cureva Fisioterapi Home Visit</p>
+          <p>Email ini dikirim otomatis. Jangan membalas email ini.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+    return this.sendMail(
+      booking.pasien_email || booking.email_pasien,
+      `📋 Pemesanan Berhasil Dibuat - ${booking.kode_booking}`,
+      html,
+    );
   }
 }
 
