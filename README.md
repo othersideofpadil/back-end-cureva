@@ -381,26 +381,6 @@ npm run lint
 }
 ```
 
-## 🔧 Environment Variables
-
-| Variable         | Required | Default     | Description            |
-| ---------------- | -------- | ----------- | ---------------------- |
-| PORT             | ❌       | 3000        | Server port            |
-| NODE_ENV         | ❌       | development | Environment mode       |
-| FRONTEND_URL     | ✅       | -           | Frontend URL for CORS  |
-| DB_HOST          | ✅       | -           | Database host          |
-| DB_USER          | ✅       | -           | Database user          |
-| DB_PASSWORD      | ✅       | -           | Database password      |
-| DB_NAME          | ✅       | -           | Database name          |
-| JWT_SECRET       | ✅       | -           | JWT signing secret     |
-| JWT_EXPIRES_IN   | ❌       | 7d          | Token expiration       |
-| SMTP_HOST        | ✅       | -           | SMTP server host       |
-| SMTP_PORT        | ❌       | 587         | SMTP server port       |
-| SMTP_USER        | ✅       | -           | SMTP username          |
-| SMTP_PASS        | ✅       | -           | SMTP password          |
-| ADMIN_EMAIL      | ✅       | -           | Admin email for notif  |
-| GOOGLE_CLIENT_ID | ❌       | -           | Google OAuth client ID |
-
 ## 📄 License
 
 MIT License - Cureva Fisioterapi © 2024-2026
