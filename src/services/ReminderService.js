@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const { pool } = require("../config/database");
 const EmailService = require("./EmailService");
+const BookingService = require("./BookingService");
 
 /**
  * ReminderService — Mengelola pengingat otomatis via cron job
@@ -93,36 +94,14 @@ class ReminderService {
 
       for (const booking of bookings) {
         try {
-          // Update status jadi dibatalkan_sistem
-          await pool.execute(
-            `UPDATE pemesanan
-             SET status = 'dibatalkan_sistem', updated_at = NOW()
-             WHERE id = ?`,
-            [booking.id],
-          );
-
-          // Bebaskan slot jadwal
-          await pool.execute(
-            `UPDATE jadwal_aktif
-             SET status = 'tersedia', id_pemesanan = NULL
-             WHERE id_pemesanan = ?`,
-            [booking.id],
-          );
-
-          // Simpan notifikasi in-app
-          await pool.execute(
-            `INSERT INTO notifikasi
-               (id_user, id_pemesanan, type, judul, pesan, link)
-             VALUES (?, ?, 'pemesanan',
-               'Pemesanan Dibatalkan Otomatis',
-               ?,
-               ?)`,
-            [
-              booking.id_pasien,
-              booking.id,
-              `Pemesanan ${booking.kode_booking} dibatalkan karena tidak ada konfirmasi dalam 24 jam.`,
-              `/booking/${booking.kode_booking}`,
-            ],
+          await BookingService.updateStatus(
+            booking.id,
+            "dibatalkan_sistem",
+            {
+              alasan_penolakan:
+                "Dibatalkan otomatis karena tidak ada konfirmasi dalam 24 jam",
+            },
+            null,
           );
 
           console.log(`[CRON AUTO-CANCEL] Dibatalkan: ${booking.kode_booking}`);
@@ -137,6 +116,28 @@ class ReminderService {
       if (bookings.length > 0) {
         console.log(
           `[CRON AUTO-CANCEL] Total dibatalkan: ${bookings.length} booking`,
+        );
+      }
+
+      // Safety-net untuk data lama: sinkronkan pembayaran menunggu
+      // yang booking-nya sudah tidak aktif menjadi gagal.
+      const [paymentSyncResult] = await pool.execute(`
+        UPDATE pembayaran pb
+        JOIN pemesanan p ON p.id = pb.id_pemesanan
+        SET
+          pb.status = 'gagal',
+          pb.catatan = CASE
+            WHEN pb.catatan IS NULL OR TRIM(pb.catatan) = ''
+              THEN 'Pembayaran dibatalkan karena status pemesanan tidak aktif'
+            ELSE pb.catatan
+          END
+        WHERE pb.status = 'menunggu'
+          AND p.status IN ('ditolak', 'dibatalkan_pasien', 'dibatalkan_sistem')
+      `);
+
+      if (paymentSyncResult.affectedRows > 0) {
+        console.log(
+          `[CRON AUTO-CANCEL] Sinkron pembayaran gagal: ${paymentSyncResult.affectedRows}`,
         );
       }
     } catch (err) {

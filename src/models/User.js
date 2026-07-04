@@ -134,20 +134,33 @@ class User {
 
   // Ambil semua user dengan filter (admin only)
   static async findAll(filters = {}) {
-    let query =
-      "SELECT id, nama, email, telepon, alamat, role, avatar_url, is_verified, last_login, created_at FROM users";
+    let query = `
+      SELECT
+        u.id,
+        u.nama,
+        u.email,
+        u.telepon,
+        u.alamat,
+        u.role,
+        u.avatar_url,
+        u.is_verified,
+        u.last_login,
+        u.created_at,
+        COUNT(p.id) AS total_booking
+      FROM users u
+      LEFT JOIN pemesanan p ON p.id_pasien = u.id`;
     const conditions = [];
     const values = [];
 
     // Filter berdasarkan role (admin/pasien)
     if (filters.role) {
-      conditions.push("role = ?");
+      conditions.push("u.role = ?");
       values.push(filters.role);
     }
 
     // Search berdasarkan nama atau email
     if (filters.search) {
-      conditions.push("(nama LIKE ? OR email LIKE ?)");
+      conditions.push("(u.nama LIKE ? OR u.email LIKE ?)");
       values.push(`%${filters.search}%`, `%${filters.search}%`);
     }
 
@@ -155,7 +168,10 @@ class User {
       query += " WHERE " + conditions.join(" AND ");
     }
 
-    query += " ORDER BY created_at DESC";
+    query +=
+      " GROUP BY u.id, u.nama, u.email, u.telepon, u.alamat, u.role, u.avatar_url, u.is_verified, u.last_login, u.created_at";
+
+    query += " ORDER BY u.created_at DESC";
 
     // Pagination: limit dan offset
     if (filters.limit) {
