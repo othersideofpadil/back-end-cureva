@@ -80,11 +80,17 @@ class AdminController {
   // Get all users with pagination
   getUsers = async (req, res) => {
     try {
-      const { role, search, limit = 10, offset = 0 } = req.query;
+      const { role, search, limit, offset } = req.query;
 
-      // Validasi limit untuk mencegah overload
-      const parsedLimit = Math.min(parseInt(limit), 100);
-      const parsedOffset = Math.max(0, parseInt(offset));
+      // Validasi limit/offset hanya jika dikirim dari client
+      const parsedLimit =
+        limit !== undefined && limit !== null && limit !== ""
+          ? Math.min(parseInt(limit, 10), 100)
+          : undefined;
+      const parsedOffset =
+        offset !== undefined && offset !== null && offset !== ""
+          ? Math.max(0, parseInt(offset, 10))
+          : undefined;
 
       const users = await User.findAll({
         role,
@@ -94,6 +100,10 @@ class AdminController {
       });
 
       const total = await User.count({ role });
+      const hasMore =
+        parsedLimit !== undefined
+          ? (parsedOffset || 0) + users.length < total
+          : false;
 
       res.json({
         success: true,
@@ -102,7 +112,7 @@ class AdminController {
           total,
           limit: parsedLimit,
           offset: parsedOffset,
-          has_more: parsedOffset + users.length < total, // Untuk pagination UI
+          has_more: hasMore, // Untuk pagination UI
         },
       });
     } catch (error) {
