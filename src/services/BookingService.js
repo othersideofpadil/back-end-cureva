@@ -103,7 +103,19 @@ class BookingService {
       );
 
       // Kunci slot
-      await JadwalAktif.bookSlot(tanggal, waktu, pemesanan.id, conn);
+      const slotBooked = await JadwalAktif.bookSlot(
+        tanggal,
+        waktu,
+        pemesanan.id,
+        conn,
+      );
+      if (!slotBooked) {
+        throw {
+          statusCode: 400,
+          message:
+            "Slot waktu baru saja dipesan orang lain, silakan pilih waktu lain",
+        };
+      }
 
       await conn.commit();
     } catch (err) {
@@ -114,37 +126,40 @@ class BookingService {
     }
 
     // Kirim notifikasi ke user
-    await NotificationService.createNotificationDelayed({
-      id_user: userId,
-      id_pemesanan: pemesanan.id,
-      type: "pemesanan",
-      judul: "Pemesanan Berhasil Dibuat",
-      pesan: `Pemesanan ${pemesanan.kode_booking} sedang menunggu konfirmasi.`,
-      link: `/booking/${pemesanan.kode_booking}`,
-    },
+    await NotificationService.createNotificationDelayed(
+      {
+        id_user: userId,
+        id_pemesanan: pemesanan.id,
+        type: "pemesanan",
+        judul: "Pemesanan Berhasil Dibuat",
+        pesan: `Pemesanan ${pemesanan.kode_booking} sedang menunggu konfirmasi.`,
+        link: `/booking/${pemesanan.kode_booking}`,
+      },
       600,
-  );
+    );
 
     // Kirim notifikasi ke admin (in-app)
     await NotificationService.notifyAdminsNewBooking(pemesanan);
 
-    // Kirim email untuk semua perubahan status (hanya pasien terverifikasi)
+    // Kirim email konfirmasi pemesanan ke pasien (hanya pasien terverifikasi)
     try {
       const [userRows] = await pool.execute(
         "SELECT is_verified, email, nama FROM users WHERE id = ?",
-        [booking.id_pasien]
+        [userId],
       );
       const pasien = userRows[0];
       if (pasien && pasien.is_verified === 1) {
-        const fullBooking = await Pemesanan.findById(booking.id);
-        await EmailService.sendBookingStatusEmail(
-          fullBooking,
-          newStatus,
-          additionalData
+        const fullBookingForPasien = await Pemesanan.findById(pemesanan.id);
+        await EmailService.sendBookingCreatedEmail(
+          fullBookingForPasien,
+          layanan,
         );
       }
     } catch (emailErr) {
-      console.error("[EMAIL] Gagal kirim email status change:", emailErr.message);
+      console.error(
+        "[EMAIL] Gagal kirim email booking created:",
+        emailErr.message,
+      );
     }
 
     // Kirim email notifikasi ke admin
@@ -390,7 +405,7 @@ class BookingService {
     try {
       const [userRows] = await pool.execute(
         "SELECT is_verified, email, nama FROM users WHERE id = ?",
-        [booking.id_pasien]
+        [booking.id_pasien],
       );
       const pasien = userRows[0];
       if (pasien && pasien.is_verified === 1) {
@@ -398,12 +413,15 @@ class BookingService {
         await EmailService.sendBookingStatusEmail(
           fullBooking,
           newStatus,
-          additionalData
+          additionalData,
         );
       }
     } catch (emailErr) {
       // Jangan sampai gagal email menghentikan proses utama
-      console.error("[EMAIL] Gagal kirim email status change:", emailErr.message);
+      console.error(
+        "[EMAIL] Gagal kirim email status change:",
+        emailErr.message,
+      );
     }
   }
 

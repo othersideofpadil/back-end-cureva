@@ -62,10 +62,16 @@ class ReminderService {
 
       for (const booking of bookings) {
         try {
+          const pasien = {
+            nama: booking.pasien_nama,
+            email: booking.pasien_email,
+            telepon: booking.pasien_telepon,
+          };
+
           // Kirim ke pasien
-          await EmailService.sendReminderH1ToPasien(booking);
+          await EmailService.sendReminderH1ToPasien(booking, pasien);
           // Kirim ke admin/fisioterapis
-          await EmailService.sendReminderH1ToAdmin(booking);
+          await EmailService.sendReminderH1ToAdmin(booking, pasien);
 
           console.log(`[CRON H-1] Reminder terkirim: ${booking.kode_booking}`);
         } catch (err) {
